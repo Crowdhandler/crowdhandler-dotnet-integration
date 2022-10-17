@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32630.192
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Crowdhandler.NETsdk", "Crowdhandler.NETsdk\Crowdhandler.NETsdk.csproj", "{6772C836-76EE-4196-8E60-DF09B46A1170}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Crowdhandler.MVCSDK", "CrowdhandlerMVCSDK\Crowdhandler.MVCSDK.csproj", "{F8E80137-7F3C-4290-91AF-93B6B7A10A28}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6772C836-76EE-4196-8E60-DF09B46A1170}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6772C836-76EE-4196-8E60-DF09B46A1170}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6772C836-76EE-4196-8E60-DF09B46A1170}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6772C836-76EE-4196-8E60-DF09B46A1170}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8E80137-7F3C-4290-91AF-93B6B7A10A28}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8E80137-7F3C-4290-91AF-93B6B7A10A28}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8E80137-7F3C-4290-91AF-93B6B7A10A28}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8E80137-7F3C-4290-91AF-93B6B7A10A28}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {40C9722E-1B53-4EAB-970A-8A61737063E7}
+	EndGlobalSection
+EndGlobal
