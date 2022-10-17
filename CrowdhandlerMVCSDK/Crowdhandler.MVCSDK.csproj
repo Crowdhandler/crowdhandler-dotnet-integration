@@ -13,6 +13,7 @@
     <Version>1.0.0</Version>
     <PackageIcon>branding.png</PackageIcon>
     <AssemblyVersion></AssemblyVersion>
+    <RepositoryUrl>https://github.com/Crowdhandler/crowdhandler-dotnet-integration</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

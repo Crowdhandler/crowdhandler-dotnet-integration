@@ -3,7 +3,7 @@
 Protect your .NET MVC Applications with [Crowdhandler](https://www.crowdhandler.com).
 
 [Nuget Package](https://www.nuget.org/packages/Crowdhandler.MVCSDK)
-[Github](https://github.com/Crowdhandler)
+[Github](<RepositoryUrl>https://github.com/Crowdhandler/crowdhandler-dotnet-integration</RepositoryUrl>)
 
 ## Getting Started
 
