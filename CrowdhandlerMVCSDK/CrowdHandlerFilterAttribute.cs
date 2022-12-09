@@ -58,7 +58,7 @@ namespace Crowdhandler.MVCSDK
             }
             if (PrivateApiKey != null)
             {
-                gk.PublicApiKey = PrivateApiKey;
+                gk.PrivateApiKey = PrivateApiKey;
             }
 
             return gk;

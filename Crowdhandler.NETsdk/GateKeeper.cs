@@ -25,7 +25,7 @@ namespace Crowdhandler.NETsdk
         /// <summary>
         /// Crowdhandler private API Key
         /// </summary>
-        virtual protected string PrivateApiKey { get; set; }
+        virtual public string PrivateApiKey { get; set; }
 
         /// <summary>
         /// Crowdhandler Waiting room URL

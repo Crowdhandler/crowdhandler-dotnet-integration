@@ -12,6 +12,7 @@ namespace Crowdhandler.NETsdk
         GateKeeper.ValidateResult Validate(Uri url, String CookieJSON = "", RoomConfig room = null);
         String WaitingRoomEndpoint { get; set; }
         String PublicApiKey { get; set; }
+        String PrivateApiKey { get; set; }
         String ApiEndpoint { get; set; }
     }
 }
