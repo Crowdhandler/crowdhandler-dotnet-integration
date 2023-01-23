@@ -127,7 +127,8 @@ namespace Crowdhandler.NETsdk
             }
             
             var roomCache = MemoryCache.Default;
-            var json = roomCache["rooms"] as string;
+            var roomCacheKey = $"rooms_${publicApiKey}";
+            var json = roomCache[roomCacheKey] as string;
 
             if (cacheSeconds == 0 || json == null)
             {
@@ -141,7 +142,7 @@ namespace Crowdhandler.NETsdk
                     {
                         AbsoluteExpiration = DateTimeOffset.UtcNow.AddSeconds(cacheSeconds)
                     };
-                    var cacheItem = new CacheItem("rooms", json);
+                    var cacheItem = new CacheItem(roomCacheKey, json);
                     roomCache.Set(cacheItem, policy);
                 }
             }
