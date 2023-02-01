@@ -204,8 +204,14 @@ namespace Crowdhandler.NETsdk
             if (sigResponse.success == false)
             {
                 // Get a token from the API
+
+                if (token == "")
+                {
+                    token = "notsupplied";
+                }
+
                 var api = this.GetApiClient();
-                var newTokenResult = api.getToken(targetUrl);
+                var newTokenResult = api.getToken(targetUrl, token);
 
                 if (newTokenResult.promoted == false)
                 {

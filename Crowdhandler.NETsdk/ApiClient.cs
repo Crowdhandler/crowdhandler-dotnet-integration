@@ -61,11 +61,11 @@ namespace Crowdhandler.NETsdk
             return client;
         }
 
-        public virtual TokenResponse getToken(string url, string token = null)
+        public virtual TokenResponse getToken(string url, string token = "notsupplied")
         {
             HttpRequestMessage msg;
 
-            if (token == null)
+            if (token == "notsupplied")
             {
                 var postBody = new Dictionary<string, string>();
                 postBody.Add("url", url);
@@ -75,8 +75,9 @@ namespace Crowdhandler.NETsdk
                 };
             }
             else
+
             {
-                msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token);
+                msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token + $"?url={url}");
             }
 
             msg.Headers.Add("x-api-key", publicApiKey);
