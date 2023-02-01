@@ -22,7 +22,7 @@ namespace Crowdhandler.NETsdk
             foreach (String q in query.Split('&'))
             {
                 String[] parts = q.Split('=');
-                dict[parts[0]] = parts[1];
+                dict[parts[0]] = parts.Length > 1 ? parts[1] : "";
             }
 
             return dict;

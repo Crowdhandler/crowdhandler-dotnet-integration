@@ -112,7 +112,9 @@ namespace Crowdhandler.MVCSDK
                 // At this point we've failed and need to redirect to the safety waiting room
                 var safetySlug = ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
                 var failureWaitingroomUrl = gk.WaitingRoomEndpoint + $"/{safetySlug}?url={Uri.EscapeDataString(url.ToString())}&ch-code=&ch-id=&ch-public-key={gk.PublicApiKey}";
-                filterContext.HttpContext.Response.Redirect(failureWaitingroomUrl, true);
+                
+                filterContext.HttpContext.Response.StatusCode = 302;
+                filterContext.HttpContext.Response.Headers["Location"] = failureWaitingroomUrl;
                 return;
             }
 
@@ -135,7 +137,8 @@ namespace Crowdhandler.MVCSDK
 
             if (result.Action == "redirect")
             {
-                filterContext.HttpContext.Response.Redirect(result.redirectUrl, true);
+                filterContext.HttpContext.Response.StatusCode = 302;
+                filterContext.HttpContext.Response.Headers["Location"] = result.redirectUrl;
                 return;
             }
         }
@@ -161,8 +164,7 @@ namespace Crowdhandler.MVCSDK
         public virtual void setCookieValue(ActionExecutingContext filterContext, String JSONString)
         {
             string cookieName = this.getCookieName();
-            string cookieValue = Uri.EscapeDataString(JSONString);
-
+            string cookieValue = JSONString;
 #if OLDDOTNET
             HttpCookie newCookie = new HttpCookie(cookieName, cookieValue);
             newCookie.Path = "/";
