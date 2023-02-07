@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using Crowdhandler.NETsdk;
 using System.Configuration;
 
@@ -28,6 +29,7 @@ namespace Crowdhandler.MVCSDK
         public string ApiEndpoint { get; set; }
         public string PublicApiKey { get; set; }
         public string PrivateApiKey { get; set; }
+        public string Exclusions { get; set; }
 
         
 
@@ -37,7 +39,7 @@ namespace Crowdhandler.MVCSDK
             if (GatekeeperType == null)
             {
                 // If the api properties are not set on this object they should be null, and therefore allow the gatekeeper defaults to kick in
-                return new GateKeeper(ApiEndpoint, PublicApiKey, PrivateApiKey);
+                return new GateKeeper(ApiEndpoint, PublicApiKey, PrivateApiKey, Exclusions);
             }
 
             if (!typeof(IGateKeeper).IsAssignableFrom(GatekeeperType))
@@ -59,6 +61,10 @@ namespace Crowdhandler.MVCSDK
             if (PrivateApiKey != null)
             {
                 gk.PrivateApiKey = PrivateApiKey;
+            }
+            if (Exclusions != null)
+            {
+                gk.Exclusions = Exclusions;
             }
 
             return gk;

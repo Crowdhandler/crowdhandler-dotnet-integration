@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Configuration;
 using Crowdhandler.NETsdk.JSONTypes;
+using Newtonsoft.Json.Linq;
 
 namespace Crowdhandler.NETsdk
 {
@@ -32,15 +33,22 @@ namespace Crowdhandler.NETsdk
         /// </summary>
         virtual public string WaitingRoomEndpoint { get; set; }
 
+        /// <summary>
+        /// Crowdhandler Waiting room URL
+        /// </summary>
+        virtual public String Exclusions { get; set; }
 
-        public GateKeeper(string apiEndpoint = null, string publicKey = null, string privateKey = null)
+
+        public GateKeeper(string apiEndpoint = null, string publicKey = null, string privateKey = null, String exclusions = null)
         {
             this.PublicApiKey = publicKey ?? this.getConfigValue("CROWDHANDLER_PUBLIC_KEY");
             this.PrivateApiKey = privateKey ?? this.getConfigValue("CROWDHANDLER_PRIVATE_KEY");
-
-            this.WaitingRoomEndpoint = this.getConfigValue("CROWDHANDLER_WR_ENDPOINT");
-
             this.ApiEndpoint = apiEndpoint ?? this.getConfigValue("CROWDHANDLER_API_ENDPOINT");
+            this.WaitingRoomEndpoint = this.getConfigValue("CROWDHANDLER_WR_ENDPOINT");
+            /// <summary>
+            /// Default to generic exclusion pattern if not provided
+            /// </summary>
+            this.Exclusions = exclusions ?? this.getConfigValue("CROWDHANDLER_EXCLUSIONS_REGEX") ?? @"^((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$";
         }
 
         public struct ValidateResult
@@ -67,6 +75,31 @@ namespace Crowdhandler.NETsdk
             /*
              Urls look like this: https://www.crowdchef.net/?ch-id=tok0M7SBFAp9J8kK&ch-id-signature=73264cf4d7c5609377fd5ce3e1b7f55189c2f432e83ec11a49757b93a1eda1d8&ch-requested=2022-07-27T11%3A16%3A13Z&ch-code=&ch-fresh=true
              */
+
+            // If the URL matches the exclusion regex, return "allow"
+            if (this.Exclusions != null)
+            {
+                Regex exclusions;
+
+                try
+                {
+                    exclusions = new Regex(Exclusions);
+                }
+                catch (ArgumentException)
+                {
+                    throw new ArgumentException("Exclusions value is not a valid regular expression");
+                }
+
+
+                if (exclusions.IsMatch(url.PathAndQuery))
+                {
+                    return new ValidateResult()
+                    {
+                        Action = "allow"
+                    };
+                }
+            };
+
 
             // Figure out the room from the URL if it's not provided
             if (room == null)
@@ -445,7 +478,7 @@ namespace Crowdhandler.NETsdk
         {
             String value = ConfigurationManager.AppSettings[settingName];
 
-            if (value == null)
+            if (value == null && settingName != "CROWDHANDLER_EXCLUSIONS_REGEX")
             {
                 throw new MissingFieldException("Value not found in ConfigurationManager.AppSettings: " + settingName);
             }
