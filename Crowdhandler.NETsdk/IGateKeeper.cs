@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Crowdhandler.NETsdk
@@ -14,5 +15,6 @@ namespace Crowdhandler.NETsdk
         String PublicApiKey { get; set; }
         String PrivateApiKey { get; set; }
         String ApiEndpoint { get; set; }
+        String Exclusions { get; set; }
     }
 }
