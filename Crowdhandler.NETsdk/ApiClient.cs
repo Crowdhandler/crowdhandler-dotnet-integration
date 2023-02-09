@@ -25,11 +25,16 @@ namespace Crowdhandler.NETsdk
 
         protected string apiUrl;
         protected string publicApiKey;
+        protected string apiRequestTimeout;
+        protected string roomCacheTTL;
 
-        public ApiClient(string apiUrl, string publicApiKey)
+
+        public ApiClient(string apiUrl, string publicApiKey, string apiRequestTimeout, string roomCacheTTL)
         {
-            this.publicApiKey = publicApiKey;
             this.apiUrl = apiUrl;
+            this.publicApiKey = publicApiKey;
+            this.apiRequestTimeout = apiRequestTimeout;
+            this.roomCacheTTL = roomCacheTTL;
 
             // From .NET Framework 4.8.0, simply use SecurityProtocolType.Tls13
             // (or rather don't use this code at all from 4.7.1, configure the TLS versions in the OS)
@@ -46,7 +51,7 @@ namespace Crowdhandler.NETsdk
             // All requests to the api should have a shortish timeout to avoid locking up the host application, this can be configured in the AppConfig
             int timeoutSeconds;
 
-            String configTimeout = ConfigurationManager.AppSettings["CROWDHANDLER_API_REQUEST_TIMEOUT"];
+            String configTimeout = apiRequestTimeout;
             if (configTimeout != null && int.TryParse(configTimeout, out timeoutSeconds))
             {
                 timeoutSeconds = int.Parse(configTimeout);
@@ -116,7 +121,7 @@ namespace Crowdhandler.NETsdk
             // All requests to the api should have a shortish timeout to avoid locking up the host application, this can be configured in the AppConfig
             int cacheSeconds = 60;
 
-            String configCacheTime = ConfigurationManager.AppSettings["CROWDHANDLER_ROOM_CACHE_TIME"];
+            String configCacheTime = roomCacheTTL;
             if (configCacheTime != null && int.TryParse(configCacheTime, out cacheSeconds))
             {
                 cacheSeconds = int.Parse(configCacheTime);

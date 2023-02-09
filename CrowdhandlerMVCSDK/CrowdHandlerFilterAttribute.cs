@@ -30,8 +30,10 @@ namespace Crowdhandler.MVCSDK
         public string PublicApiKey { get; set; }
         public string PrivateApiKey { get; set; }
         public string Exclusions { get; set; }
+        public string APIRequestTimeout { get; set; }
+        public string RoomCacheTTL { get; set; }
+        public string SafetyNetSlug { get; set; }
 
-        
 
         protected virtual IGateKeeper getGatekeeper()
         {
@@ -39,7 +41,7 @@ namespace Crowdhandler.MVCSDK
             if (GatekeeperType == null)
             {
                 // If the api properties are not set on this object they should be null, and therefore allow the gatekeeper defaults to kick in
-                return new GateKeeper(ApiEndpoint, PublicApiKey, PrivateApiKey, Exclusions);
+                return new GateKeeper(ApiEndpoint, PublicApiKey, PrivateApiKey, Exclusions, APIRequestTimeout, RoomCacheTTL);
             }
 
             if (!typeof(IGateKeeper).IsAssignableFrom(GatekeeperType))
@@ -65,6 +67,14 @@ namespace Crowdhandler.MVCSDK
             if (Exclusions != null)
             {
                 gk.Exclusions = Exclusions;
+            }
+            if (APIRequestTimeout != null)
+            {
+                gk.APIRequestTimeout = APIRequestTimeout;
+            }
+            if (RoomCacheTTL != null)
+            {
+                gk.RoomCacheTTL = RoomCacheTTL;
             }
 
             return gk;
@@ -116,7 +126,7 @@ namespace Crowdhandler.MVCSDK
                 }
 
                 // At this point we've failed and need to redirect to the safety waiting room
-                var safetySlug = ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
+                var safetySlug = SafetyNetSlug ?? ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
                 var failureWaitingroomUrl = gk.WaitingRoomEndpoint + $"/{safetySlug}?url={Uri.EscapeDataString(url.ToString())}&ch-code=&ch-id=&ch-public-key={gk.PublicApiKey}";
                 
                 filterContext.HttpContext.Response.StatusCode = 302;

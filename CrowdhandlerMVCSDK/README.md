@@ -9,26 +9,67 @@ Protect your .NET MVC Applications with [Crowdhandler](https://www.crowdhandler.
 
 ### 1) Add Reference to your project
 
-This is easist done using NuGet, find the `Crowdhandler.MVCSDK` package in the NuGet package manager, or via the `dotnet` CLI
+This is easiest done using NuGet, find the `Crowdhandler.MVCSDK` package in the NuGet package manager, or via the `dotnet` CLI
 
 ```
 dotnet add package Crowdhandler.MVCSDK
 ```
 
-### 2) Add your Crowdhandler API settings
+### 2a) Add required Crowdhandler configuration options
 
-*Web.config*
-```
+There are two different recommended ways of doing this.
+
+*app/web.config*
+```cs
 <appSettings>
     <add key="CROWDHANDLER_PUBLIC_KEY" value="YOUR_PUBLIC_KEY" />
     <add key="CROWDHANDLER_PRIVATE_KEY" value="YOUR_PRIVATE_KEY" />
-    <add key="CROWDHANDLER_API_ENDPOINT" value="http://api.crowdhandler.com" />
-    <add key="CROWDHANDLER_WR_ENDPOINT" value="https://wait.crowdhandler.com"/>
 </appSettings>
+```
+
+Alternatively configuration options can be injected into the CrowdHandler Filter Attribute (step 3).
+
+*ExampleTicketingController.cs*
+```cs
+  [CrowdhandlerFilter(PublicApiKey = "YOUR_PUBLIC_KEY", PrivateApiKey = "YOUR_PRIVATE_KEY")]
 ```
 
 Your API keys can found in your Crowdhandler dashboard. [Click here for more information](https://www.crowdhandler.com/support/solutions/articles/80000138228-introduction-to-the-api)
 
+### 2b) Full CrowdHandler configuration options
+
+app/web.config options:
+
+| Value | Description | Required | Type |
+| ----- | ----------- | -------- | ---- |
+| CROWDHANDLER_PUBLIC_KEY | Your Crowdhandler public API key. | Yes | String |
+| CROWDHANDLER_PRIVATE_KEY | Your Crowdhandler private API key. | Yes | String |
+| CROWDHANDLER_API_ENDPOINT | The Crowdhandler API URL. Default: https://api.crowdhandler.com | No | String |
+| CROWDHANDLER_WR_ENDPOINT | Your Crowdhandler waiting room URL. Default: https://wait.crowdhandler.com | No | String |
+| CROWDHANDLER_EXCLUSIONS_REGEX | Regex pattern for URLs that should not be sent to the waiting room. Default: `@"^((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$"` | No | String |
+| CROWDHANDLER_API_REQUEST_TIMEOUT | How many seconds to wait for the Crowdhandler API to respond before failing. Default: 3 | No | String |
+| CROWDHANDLER_ROOM_CACHE_TIME | How many seconds to cache your Crowdhandler room configuration for. Set the value to 0 to never cache. Default: 60 | No | String |
+| CROWDHANDLER_SAFETYNET_SLUG | If failTrust is set to false, this waiting room slug will be used as the safety net room | No | String |
+
+CrowdHandler Filter Attribute options:
+
+| Value | Description | Required | Type |
+| ----- | ----------- | -------- | ---- |
+| PublicApiKey | Your Crowdhandler public API key. | Yes | String |
+| PrivateApiKey | Your Crowdhandler private API key. | Yes | String |
+| ApiEndpoint | The Crowdhandler API URL. Default: https://api.crowdhandler.com | No | String |
+| WaitingRoomEndpoint | Your Crowdhandler waiting room URL. Default: https://wait.crowdhandler.com | No | String |
+| Exclusions | Regex pattern for URLs that should not be sent to the waiting room. Default: `@"^((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$"` | No | String |
+| APIRequestTimeout | How many seconds to wait for the Crowdhandler API to respond before failing. Default: 3 | No | String |
+| RoomCacheTTL | How many seconds to cache your Crowdhandler room configuration for. Set the value to 0 to never cache. Default: 60 | No | String |
+| FailTrust | If true, users that fail to check-in with CrowdHandler's API will be trusted. Read more about Trust on Fail - https://www.crowdhandler.com/docs/80000984411-trust-on-fail. Default: true | No | Boolean |
+| SafetyNetSlug | If failTrust is set to false, this waiting room slug will be used as the safety net room. | No | String |
+| DebugMode | For local development. Default: false | No | Boolean |
+| GateKeeperType | If set, this Class of GateKeeper will be used instead of the default when validating users. Used to implement custom behavior in the GateKeeper validation process. Default: null | No | Type implementing IGateKeeper |
+
+\* FailTrust can only be set via Filter Attribute
+** DebugMode can only be set via Filter Attribute
+*** GateKeeperType can only be set via Filter Attribute
 
 ### 3) Apply the Crowdhandler Filter Attribute to your Controller Actions
 
@@ -49,44 +90,28 @@ namespace MyTicketingApp.Controllers
 }
 ```
 
-### 4) Configure the `CrowdhandlerFilter` Attribute
+Custom URL exclusion pattern example:
 
-The default CrowdhandlerFilterAttribute properties should work in most environments, but if neccessary, custom behaviour can be configured with the following:
+*ExampleTicketingController.cs*
+```cs
+using Crowdhandler.MVCSDK;
 
-**`ApiEndpoint`, `PrivateApiKey` & `PublicApiKey` (string) (default null)**
+namespace MyTicketingApp.Controllers
+{
+    public class TicketingController : Controller
+    {
+        [CrowdhandlerFilter(Exclusions = @"^(\/contact-us.*)|((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$")]
+        public ActionResult Index()
+        {
+            return View();
+        }
+    }
+}
+```
 
-These API configuration options can be directly injected into the Action Filter, bypassing their default configuration options, which are pulled from `Web.Config`. For more information see the *Configuration* section below
+### 4) Advanced Customisation
 
-**`FailTrust` (boolean) (default true)**
-
-If false, a user that fails to check-in with CrowdHandler's API will be sent to a safety net waiting room until CrowdHandler is able to make a decision on what to do with them. In this option false you may also want to set the `CROWDHANDLER_SAFETYNET_SLUG` setting (see Configuration section)
-
-If true, users that fail to check-in with CrowdHandler's API will be trusted
-
-[Read more about Trust on Fail](https://www.crowdhandler.com/support/solutions/articles/80000984411-trust-on-fail)
-
-**`GatekeeperType` (Type implementing IGateKeeper) (default null)**
-
-If set, this Class of GateKeeper will be used instead of the default when validating users. Used to implement custom behavior in the GateKeeper validation process.
-
-## Configuration
-
-The following can be configured in the appSettings property of your applications Web.config file
-
-| Value | Description | Required |
-| ----- | ----------- | -------- |
-| CROWDHANDLER_PUBLIC_KEY | Your Crowdhandler public API key. | Yes |
-| CROWDHANDLER_PRIVATE_KEY | Your Crowdhandler private API key. | Yes |
-| CROWDHANDLER_API_ENDPOINT | The Crowdhandler API URL | Yes |
-| CROWDHANDLER_WR_ENDPOINT | Your Crowdhandler waiting room URL | Yes |
-| CROWDHANDLER_API_REQUEST_TIMEOUT | How many seconds to wait for the Crowdhandler API to respond before failing. Default: 3 | No |
-| CROWDHANDLER_ROOM_CACHE_TIME | How many seconds to cache your Crowdhandler room configuration for. Set the value to 0 to never cache. Default: 60 | No |
-| CROWDHANDLER_SAFETYNET_SLUG | If failTrust is set to false, this waiting room slug will be used as the safety net room | No |
-
-## Customisation
-### I only need to validate certain urls on my Controller Action
-
-If you need finer control from the Action Filter, for example you'd like to exclude some urls from validation, you can extend the `CrowdhandlerFilterAttribute` class, implement your own url filtering logic, and then execute it. For example:
+If you need finer control from the Action Filter, you can extend the `CrowdhandlerFilterAttribute` class, implement your own logic, and then execute it. For example:
 
 *MyCustomLogicFilterAttribute.cs*
 ```cs
@@ -123,9 +148,9 @@ public class TicketingController : Controller
 }
 ```
 
-### I want to store my Room Configuration locally
+### Extend/Override the IGateKeeper class
 
-By default the Crowdhandler room configuration is fetched via the API and then cached in memory for 1 minute. If you would like to bypass this and keep static copy of the Configuation locally, you can do this by implementing/extending your own IGateKeeper class, and passing it's type to the `GatekeeperType` property of the `CrowdhandlerFilterAttribute`. For example:
+By default the Crowdhandler room configuration is fetched via the API and then cached in memory for 1 minute. If you would like to bypass this and keep static copy of the Configuation locally, you can do this by extending/implementing your own IGateKeeper class, and passing it's type to the `GatekeeperType` property of the `CrowdhandlerFilterAttribute`. For example:
 
 *MyCustomGateKeeper.cs*
 ```cs
