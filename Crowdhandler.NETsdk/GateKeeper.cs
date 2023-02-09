@@ -38,17 +38,27 @@ namespace Crowdhandler.NETsdk
         /// </summary>
         virtual public String Exclusions { get; set; }
 
+        /// <summary>
+        /// Crowdhandler API Request Timeout in Seconds
+        /// </summary>
+        virtual public String APIRequestTimeout { get; set; }
 
-        public GateKeeper(string apiEndpoint = null, string publicKey = null, string privateKey = null, String exclusions = null)
+        /// <summary>
+        /// Crowdhandler RoomCache TTL
+        /// </summary>
+        virtual public String RoomCacheTTL { get; set; }
+
+
+
+        public GateKeeper(String publicKey = null, String privateKey = null, String apiEndpoint = null, String waitingRoomEndpoint = null, String exclusions = null, String apiRequestTimeout = null, String roomCacheTTL = null, String safetyNetSlug = null)
         {
-            this.PublicApiKey = publicKey ?? this.getConfigValue("CROWDHANDLER_PUBLIC_KEY");
-            this.PrivateApiKey = privateKey ?? this.getConfigValue("CROWDHANDLER_PRIVATE_KEY");
-            this.ApiEndpoint = apiEndpoint ?? this.getConfigValue("CROWDHANDLER_API_ENDPOINT");
-            this.WaitingRoomEndpoint = this.getConfigValue("CROWDHANDLER_WR_ENDPOINT");
-            /// <summary>
-            /// Default to generic exclusion pattern if not provided
-            /// </summary>
-            this.Exclusions = exclusions ?? this.getConfigValue("CROWDHANDLER_EXCLUSIONS_REGEX") ?? @"^((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$";
+            this.PublicApiKey = publicKey ?? this.getConfigValue("CROWDHANDLER_PUBLIC_KEY", true);
+            this.PrivateApiKey = privateKey ?? this.getConfigValue("CROWDHANDLER_PRIVATE_KEY", true); 
+            this.ApiEndpoint = apiEndpoint ?? this.getConfigValue("CROWDHANDLER_API_ENDPOINT", false) ?? "https://api.crowdhandler.com";
+            this.WaitingRoomEndpoint = waitingRoomEndpoint ?? this.getConfigValue("CROWDHANDLER_WR_ENDPOINT", false) ?? "https://wait.crowdhandler.com";
+            this.Exclusions = exclusions ?? this.getConfigValue("CROWDHANDLER_EXCLUSIONS_REGEX", false) ?? @"^((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$";
+            this.APIRequestTimeout = apiRequestTimeout ?? this.getConfigValue("CROWDHANDLER_API_REQUEST_TIMEOUT", false) ?? "3";
+            this.RoomCacheTTL = roomCacheTTL ?? this.getConfigValue("CROWDHANDLER_ROOM_CACHE_TIME", false) ?? "60";
         }
 
         public struct ValidateResult
@@ -248,7 +258,7 @@ namespace Crowdhandler.NETsdk
 
                 if (newTokenResult.promoted == false)
                 {
-                    var redirectUrl = $"https://{this.WaitingRoomEndpoint}/{newTokenResult.slug}?url={Uri.EscapeDataString(targetUrl)}&ch-code={chCode}&ch-id={newTokenResult.token}&ch-public-key={this.PublicApiKey}";
+                    var redirectUrl = $"{this.WaitingRoomEndpoint}/{newTokenResult.slug}?url={Uri.EscapeDataString(targetUrl)}&ch-code={chCode}&ch-id={newTokenResult.token}&ch-public-key={this.PublicApiKey}";
                     return new ValidateResult()
                     {
                         Action = "redirect",
@@ -474,11 +484,12 @@ namespace Crowdhandler.NETsdk
         /// </summary>
         /// <param name="settingName">The config value name to look up</param>
         /// <returns>Config value</returns>
-        protected virtual String getConfigValue(String settingName)
+        /// 
+        protected virtual String getConfigValue(String settingName, Boolean required)
         {
             String value = ConfigurationManager.AppSettings[settingName];
 
-            if (value == null && settingName != "CROWDHANDLER_EXCLUSIONS_REGEX")
+            if (value == null && required == true)
             {
                 throw new MissingFieldException("Value not found in ConfigurationManager.AppSettings: " + settingName);
             }
@@ -491,7 +502,7 @@ namespace Crowdhandler.NETsdk
         {
             if (this._crowdhandlerApi == null)
             {
-                this._crowdhandlerApi = new ApiClient(this.ApiEndpoint, this.PublicApiKey);
+                this._crowdhandlerApi = new ApiClient(this.ApiEndpoint, this.PublicApiKey, this.APIRequestTimeout, this.RoomCacheTTL);
             }
             return this._crowdhandlerApi;
         }
