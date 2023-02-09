@@ -5,4 +5,4 @@
 Protect your .NET MVC Applications with [Crowdhandler](https://www.crowdhandler.com).
 
 * For documentation check out our [Nuget Package](https://www.nuget.org/packages/Crowdhandler.MVCSDK)
-* Quick start guide can be found here [Quick Start Guide](https://www.crowdhandler.com/docs/80000833957-aws-cloudfront-integration-getting-started)
+* Quick start guide can be found here [Quick Start Guide](https://www.crowdhandler.com/docs/80001059728--net-integration-quick-start-guide)
