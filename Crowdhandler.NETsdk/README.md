@@ -8,13 +8,13 @@ The GateKeeper class is the core of the Crowdhandler .NET SDK, containing a gene
 
 ### Properties
 
-- ApiEndpoint: The Crowdhandler API URL.
-- PublicApiKey: The Crowdhandler public API Key.
-- PrivateApiKey: The Crowdhandler private API Key.
-- WaitingRoomEndpoint: The Crowdhandler Waiting room URL.
-- Exclusions: The Crowdhandler Exclusions regular expression.
-- APIRequestTimeout: The Crowdhandler API Request Timeout in seconds.
-- RoomCacheTTL: The Crowdhandler RoomCache Time To Live in seconds.
+- **string** ApiEndpoint: The Crowdhandler API URL.
+- **string** PublicApiKey: The Crowdhandler public API Key.
+- **string** PrivateApiKey: The Crowdhandler private API Key.
+- **string** WaitingRoomEndpoint: The Crowdhandler Waiting room URL.
+- **string** Exclusions: The Crowdhandler Exclusions regular expression.
+- **string** APIRequestTimeout: The Crowdhandler API Request Timeout in seconds.
+- **string** RoomCacheTTL: The Crowdhandler RoomCache Time To Live in seconds.
 
 ### Constructor
 
@@ -34,9 +34,9 @@ public virtual ValidateResult Validate(Uri url, String CookieJSON = "", RoomConf
 
 **Parameters:**
 
-- url: The URL to test.
-- CookieJSON: A JSON formatted string containing validation information. If not provided, validation is attempted against parameters provided in the URL query string.
-- room: A set of Crowdhandler room configurations. If not provided, these are fetched using your API key via HTTP.
+- **string** url: The URL to test.
+- **CookieJSON**: A JSON formatted string containing validation information. If not provided, validation is attempted against parameters provided in the URL query string.
+- **RoomConfig** room: A set of Crowdhandler room configurations. If not provided, these are fetched using your API key via HTTP.
 
 **Returns**: 
 A ValidateResult object containing the result of the validation and additional data.
@@ -62,10 +62,10 @@ public virtual ValidateSignatureResponse ValidateSignature(List<CookieSignature>
 
 **Parameters:**
 
-- List\<CookieSignature\> CandidateSignatures: A list of candidate signatures to validate.
-- CookieData cookie: The cookie data to validate.
-- String token: The token to use for validation.
-- RoomConfig room: The room configuration to use for validation.
+- **List\<CookieSignature\>** CandidateSignatures: A list of candidate signatures to validate.
+- **CookieData cookie**: The cookie data to validate.
+- **string** token: The token to use for validation.
+- **RoomConfig** room: The room configuration to use for validation.
 
 **Returns**:
 A ValidateSignatureResponse object with the validation result.
@@ -80,10 +80,10 @@ public virtual ValidateSignatureResponse ValidateSignature(String Signature, Dat
 
 **Parameters:**
 
-- String Signature: The signature to validate.
-- DateTime requested: The requested timestamp.
-- String token: The token to use for validation.
-- RoomConfig room: The room configuration to use for validation.
+- **string** Signature: The signature to validate.
+- **DateTime** requested: The requested timestamp.
+- **string** token: The token to use for validation.
+- **RoomConfig** room: The room configuration to use for validation.
 
 **Returns**:
 A ValidateSignatureResponse object with the validation result.
