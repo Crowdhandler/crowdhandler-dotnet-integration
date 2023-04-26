@@ -35,7 +35,7 @@ public virtual ValidateResult Validate(Uri url, String CookieJSON = "", RoomConf
 **Parameters:**
 
 - **string** url: The URL to test.
-- **CookieJSON**: A JSON formatted string containing validation information. If not provided, validation is attempted against parameters provided in the URL query string.
+- **CookieJSON**: A JSON formatted string containing validation information. If not provided, validation is attempted against parameters provided in the URL query string. Found in cookie named "crowdhandler set by the SDK."
 - **RoomConfig** room: A set of Crowdhandler room configurations. If not provided, these are fetched using your API key via HTTP.
 
 **Returns**: 
@@ -63,7 +63,7 @@ public virtual ValidateSignatureResponse ValidateSignature(List<CookieSignature>
 **Parameters:**
 
 - **List\<CookieSignature\>** CandidateSignatures: A list of candidate signatures to validate.
-- **CookieData cookie**: The cookie data to validate. Found in cookie set by the SDK named "crowdhandler". 
+- **CookieData cookie**: The cookie data to validate. Found in cookie named "crowdhandler" set by the SDK. 
 - **string** token: The token to use for validation.
 - **RoomConfig** room: The room configuration to use for validation.
 
@@ -103,7 +103,7 @@ public virtual CookieData getCookieData(String JSONCookieData)
 
 **Parameters:**
 
-- **string** JSONCookieData: The JSON string representing the cookie data. Found in cookie set by the SDK named "crowdhandler". 
+- **string** JSONCookieData: The JSON string representing the cookie data. Found in cookie name "crowdhandler" set by the SDK. 
 
 **Returns**: 
 
