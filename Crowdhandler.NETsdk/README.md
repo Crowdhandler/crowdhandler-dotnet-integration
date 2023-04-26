@@ -63,7 +63,7 @@ public virtual ValidateSignatureResponse ValidateSignature(List<CookieSignature>
 **Parameters:**
 
 - **List\<CookieSignature\>** CandidateSignatures: A list of candidate signatures to validate.
-- **CookieData cookie**: The cookie data to validate.
+- **CookieData cookie**: The cookie data to validate. Found in cookie set by the SDK named "crowdhandler". 
 - **string** token: The token to use for validation.
 - **RoomConfig** room: The room configuration to use for validation.
 
@@ -103,7 +103,7 @@ public virtual CookieData getCookieData(String JSONCookieData)
 
 **Parameters:**
 
-- **string** JSONCookieData: The JSON string representing the cookie data.
+- **string** JSONCookieData: The JSON string representing the cookie data. Found in cookie set by the SDK named "crowdhandler". 
 
 **Returns**: 
 
