@@ -89,8 +89,14 @@ namespace Crowdhandler.MVCSDK
         {
 #if NEWDOTNET
             var url = new Uri( Microsoft.AspNetCore.Http.Extensions.UriHelper.GetDisplayUrl(filterContext.HttpContext.Request) );
+            string userAgent = filterContext.HttpContext.Request.Headers["User-Agent"].ToString();
+            string language = filterContext.HttpContext.Request.Headers["Accept-Language"].ToString();
+            string ipAddress = filterContext.HttpContext.Connection.RemoteIpAddress.ToString();
 #else
             var url = filterContext.HttpContext.Request.Url;
+            string userAgent = filterContext.HttpContext.Request.UserAgent;
+            string language = filterContext.HttpContext.Request.UserLanguages != null ? string.Join(",", filterContext.HttpContext.Request.UserLanguages) : null;
+            string ipAddress = filterContext.HttpContext.Request.UserHostAddress;
 #endif
             string CookieData = this.getCookieValue(filterContext);
 
@@ -100,7 +106,7 @@ namespace Crowdhandler.MVCSDK
 
             try
             {
-                result = gk.Validate(url, CookieData);
+                result = gk.Validate(url, userAgent, language, ipAddress, CookieData);
             }
             catch (Exception ex)
             {

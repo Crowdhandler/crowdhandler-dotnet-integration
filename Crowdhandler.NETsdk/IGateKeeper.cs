@@ -10,7 +10,7 @@ namespace Crowdhandler.NETsdk
 {
     public interface IGateKeeper
     {
-        GateKeeper.ValidateResult Validate(Uri url, String CookieJSON = "", RoomConfig room = null);
+        GateKeeper.ValidateResult Validate(Uri url, String userAgent, String language, String ipAddress, String CookieJSON = "", RoomConfig room = null);
         String PublicApiKey { get; set; }
         String PrivateApiKey { get; set; }
         String ApiEndpoint { get; set; }
