@@ -80,7 +80,7 @@ namespace Crowdhandler.NETsdk
         /// <param name="CookieJSON">A JSON formatted string containing validation information. If not provided, validation is attempted against parameters provided in the URL query string</param>
         /// <param name="room">A set of Crowdhandler room configurations, if not provided, these are fetched using your API key via HTTP</param>
         /// <returns>A <see cref="ValidateResult"/> object containing the result of the validation and additional data</returns>
-        public virtual ValidateResult Validate(Uri url, String CookieJSON = "", RoomConfig room = null)
+        public virtual ValidateResult Validate(Uri url, String userAgent, String language, String ipAddress, String CookieJSON = "", RoomConfig room = null)
         {
             /*
              Urls look like this: https://www.crowdchef.net/?ch-id=tok0M7SBFAp9J8kK&ch-id-signature=73264cf4d7c5609377fd5ce3e1b7f55189c2f432e83ec11a49757b93a1eda1d8&ch-requested=2022-07-27T11%3A16%3A13Z&ch-code=&ch-fresh=true
@@ -254,7 +254,7 @@ namespace Crowdhandler.NETsdk
                 }
 
                 var api = this.GetApiClient();
-                var newTokenResult = api.getToken(targetUrl, token);
+                var newTokenResult = api.getToken(targetUrl, userAgent, language, ipAddress, token);
 
                 if (newTokenResult.promoted == false)
                 {

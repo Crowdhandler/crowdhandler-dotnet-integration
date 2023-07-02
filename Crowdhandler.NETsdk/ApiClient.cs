@@ -66,7 +66,7 @@ namespace Crowdhandler.NETsdk
             return client;
         }
 
-        public virtual TokenResponse getToken(string url, string token = "notsupplied")
+        public virtual TokenResponse getToken(string url, String userAgent, String language, String ipAddress, string token = "notsupplied")
         {
             HttpRequestMessage msg;
 
@@ -74,6 +74,9 @@ namespace Crowdhandler.NETsdk
             {
                 var postBody = new Dictionary<string, string>();
                 postBody.Add("url", url);
+                postBody.Add("agent", userAgent);
+                postBody.Add("lang", language);
+                postBody.Add("ip", ipAddress);
                 msg = new HttpRequestMessage(HttpMethod.Post, apiUrl + "/v1/requests/")
                 {
                     Content = new FormUrlEncodedContent(postBody)
@@ -82,7 +85,7 @@ namespace Crowdhandler.NETsdk
             else
 
             {
-                msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token + $"?url={url}");
+                msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token + $"?url={url}&agent={userAgent}&lang={language}&ip={ipAddress}");
             }
 
             msg.Headers.Add("x-api-key", publicApiKey);
