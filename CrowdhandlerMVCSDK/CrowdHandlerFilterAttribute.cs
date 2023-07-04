@@ -91,12 +91,51 @@ namespace Crowdhandler.MVCSDK
             var url = new Uri( Microsoft.AspNetCore.Http.Extensions.UriHelper.GetDisplayUrl(filterContext.HttpContext.Request) );
             string userAgent = filterContext.HttpContext.Request.Headers["User-Agent"].ToString();
             string language = filterContext.HttpContext.Request.Headers["Accept-Language"].ToString();
-            string ipAddress = filterContext.HttpContext.Connection.RemoteIpAddress.ToString();
+            string ipAddress = String.Empty;
+
+
+            string forwardedForHeader = filterContext.HttpContext.Request.Headers["X-Forwarded-For"];
+            if (!string.IsNullOrEmpty(forwardedForHeader))
+            {
+                // Get the list of IP addresses from HTTP_X_FORWARDED_FOR header
+                string[] ipList = forwardedForHeader.ToString().Split(',');
+
+                if (ipList.Length > 0)
+                {
+                    // Get the first IP in the list, which should be the original client IP
+                    ipAddress = ipList[0].Trim();
+                }
+            }
+
+            // If we didn't get an IP from HTTP_X_FORWARDED_FOR, or if it was empty, use UserHostAddress
+            if (String.IsNullOrEmpty(ipAddress))
+            {
+                ipAddress = filterContext.HttpContext.Connection.RemoteIpAddress.ToString();
+            }
+
 #else
             var url = filterContext.HttpContext.Request.Url;
             string userAgent = filterContext.HttpContext.Request.UserAgent;
             string language = filterContext.HttpContext.Request.UserLanguages != null ? string.Join(",", filterContext.HttpContext.Request.UserLanguages) : null;
-            string ipAddress = filterContext.HttpContext.Request.UserHostAddress;
+            string ipAddress = String.Empty;
+
+            if (filterContext.HttpContext.Request.ServerVariables["HTTP_X_FORWARDED_FOR"] != null)
+            {
+                // Get the list of IP addresses from HTTP_X_FORWARDED_FOR header
+                string[] ipList = filterContext.HttpContext.Request.ServerVariables["HTTP_X_FORWARDED_FOR"].Split(',');
+
+                if (ipList.Length > 0)
+                {
+                    // Get the first IP in the list, which should be the original client IP
+                    ipAddress = ipList[0].Trim();
+                }
+            }
+
+            // If we didn't get an IP from HTTP_X_FORWARDED_FOR, or if it was empty, use UserHostAddress
+            if (String.IsNullOrEmpty(ipAddress))
+            {
+                ipAddress = HttpContext.Current.Request.UserHostAddress;
+            }
 #endif
             string CookieData = this.getCookieValue(filterContext);
 
