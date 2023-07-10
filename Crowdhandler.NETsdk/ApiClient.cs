@@ -67,37 +67,6 @@ namespace Crowdhandler.NETsdk
             return client;
         }
 
-        //public virtual TokenResponse getToken(string url, String userAgent, String language, String ipAddress, string token = "notsupplied")
-        //{
-        //    HttpRequestMessage msg;
-
-        //    if (token == "notsupplied")
-        //    {
-        //        var postBody = new Dictionary<string, string>();
-        //        postBody.Add("url", url);
-        //        postBody.Add("agent", userAgent);
-        //        postBody.Add("lang", language);
-        //        postBody.Add("ip", ipAddress);
-        //        msg = new HttpRequestMessage(HttpMethod.Post, apiUrl + "/v1/requests/")
-        //        {
-        //            Content = new FormUrlEncodedContent(postBody)
-        //        };
-        //    }
-        //    else
-
-        //    {
-        //        msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token + $"?url={url}&agent={userAgent}&lang={language}&ip={ipAddress}");
-        //    }
-
-        //    msg.Headers.Add("x-api-key", publicApiKey);
-
-        //    var responseBody = doRequest(msg);
-
-        //    return JObject.Parse(responseBody)["result"].ToObject<TokenResponse>();
-
-        //    //return Newtonsoft.Json.JsonConvert.DeserializeObject<TokenResponse>(responseBody);
-        //}
-
         public virtual TokenResponse getToken(string url, String userAgent, String language, String ipAddress, string token = "notsupplied")
         {
             try
@@ -217,21 +186,6 @@ namespace Crowdhandler.NETsdk
             return json;
         }
 
-        // create/fetch a httpClient object from the pool, execute the request and then return it to the pool
-        //protected string doRequest(HttpRequestMessage request)
-        //{
-        //    using (var httpClientContainer = _httpClientPool.Get())
-        //    {
-        //        HttpClient client = httpClientContainer.Value;
-
-        //        // Force this async method to be synchronous, doing this is apparently bad, but I prefer it to making everything async
-        //        var task = Task.Run(() => client.SendAsync(request));
-        //        task.Wait();
-        //        var response = task.Result;
-
-        //        return response.Content.ReadAsStringAsync().Result;
-        //    }
-        //}
         protected string doRequest(HttpRequestMessage request)
         {
             int maxRetries = 3;
