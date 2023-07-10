@@ -55,47 +55,74 @@ namespace Crowdhandler.NETsdk
             if (configTimeout != null && int.TryParse(configTimeout, out timeoutSeconds))
             {
                 timeoutSeconds = int.Parse(configTimeout);
-            } else
+            }
+            else
             {
                 // Tryparse will set the value to zero if it's not parsable?!
-                timeoutSeconds = 3;
+                timeoutSeconds = 5;
             }
-            
-            client.Timeout = new TimeSpan(0,0, timeoutSeconds);
+
+            client.Timeout = new TimeSpan(0, 0, timeoutSeconds);
 
             return client;
         }
 
         public virtual TokenResponse getToken(string url, String userAgent, String language, String ipAddress, string token = "notsupplied")
         {
-            HttpRequestMessage msg;
-
-            if (token == "notsupplied")
+            try
             {
-                var postBody = new Dictionary<string, string>();
-                postBody.Add("url", url);
-                postBody.Add("agent", userAgent);
-                postBody.Add("lang", language);
-                postBody.Add("ip", ipAddress);
-                msg = new HttpRequestMessage(HttpMethod.Post, apiUrl + "/v1/requests/")
+                if (string.IsNullOrEmpty(apiUrl) || string.IsNullOrEmpty(publicApiKey))
                 {
-                    Content = new FormUrlEncodedContent(postBody)
-                };
-            }
-            else
+                    throw new ArgumentNullException(nameof(apiUrl), "API URL or publicApiKey is null or empty");
+                }
 
+                HttpRequestMessage msg;
+
+                if (token == "notsupplied")
+                {
+                    var postBody = new Dictionary<string, string>();
+                    postBody.Add("url", url);
+                    postBody.Add("agent", userAgent);
+                    postBody.Add("lang", language);
+                    postBody.Add("ip", ipAddress);
+                    msg = new HttpRequestMessage(HttpMethod.Post, apiUrl + "/v1/requests/")
+                    {
+                        Content = new FormUrlEncodedContent(postBody)
+                    };
+                }
+                else
+                {
+                    msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token + $"?url={url}&agent={userAgent}&lang={language}&ip={ipAddress}");
+                }
+
+                msg.Headers.Add("x-api-key", publicApiKey);
+
+                var responseBody = doRequest(msg);
+
+                if (string.IsNullOrEmpty(responseBody))
+                {
+                    throw new ArgumentNullException(nameof(responseBody), "Response from doRequest is null or empty");
+                }
+
+                var jObjectResponse = JObject.Parse(responseBody);
+
+                var resultToken = jObjectResponse["result"];
+
+                if (resultToken == null)
+                {
+                    throw new ArgumentNullException(nameof(resultToken), "Response body does not contain a 'result' key");
+                }
+
+                return resultToken.ToObject<TokenResponse>();
+            }
+            catch (Exception ex)
             {
-                msg = new HttpRequestMessage(HttpMethod.Get, apiUrl + "/v1/requests/" + token + $"?url={url}&agent={userAgent}&lang={language}&ip={ipAddress}");
+                // Log exception details here, and then re-throw to ensure that the exception is still visible
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+                throw;
             }
-
-            msg.Headers.Add("x-api-key", publicApiKey);
-
-            var responseBody = doRequest(msg);
-
-            return JObject.Parse(responseBody)["result"].ToObject<TokenResponse>();
-
-            //return Newtonsoft.Json.JsonConvert.DeserializeObject<TokenResponse>(responseBody);
         }
+
 
         public virtual List<RoomConfig> getRoomConfig()
         {
@@ -134,7 +161,7 @@ namespace Crowdhandler.NETsdk
                 // Tryparse will set the value to zero if it's not parsable?!
                 cacheSeconds = 60;
             }
-            
+
             var roomCache = MemoryCache.Default;
             var roomCacheKey = $"rooms_${publicApiKey}";
             var json = roomCache[roomCacheKey] as string;
@@ -159,21 +186,33 @@ namespace Crowdhandler.NETsdk
             return json;
         }
 
-        // create/fetch a httpClient object from the pool, execute the request and then return it to the pool
         protected string doRequest(HttpRequestMessage request)
         {
-            using (var httpClientContainer = _httpClientPool.Get())
+            int maxRetries = 3;
+            for (int i = 0; i < maxRetries; i++)
             {
-                HttpClient client = httpClientContainer.Value;
+                try
+                {
+                    using (var httpClientContainer = _httpClientPool.Get())
+                    {
+                        HttpClient client = httpClientContainer.Value;
+                        var task = Task.Run(() => client.SendAsync(request));
+                        task.Wait();
+                        var response = task.Result;
 
-                // Force this async method to be synchronous, doing this is apparently bad, but I prefer it to making everything async
-                var task = Task.Run(() => client.SendAsync(request));
-                task.Wait();
-                var response = task.Result;
-
-                return response.Content.ReadAsStringAsync().Result;
+                        return response.Content.ReadAsStringAsync().Result;
+                    }
+                }
+                catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
+                {
+                    // If we've exhausted retries, throw the exception.
+                    if (i == maxRetries - 1)
+                    {
+                        throw;
+                    }
+                }
             }
+            return null; // Or however you want to handle ultimately unsuccessful requests.
         }
-
     }
 }
