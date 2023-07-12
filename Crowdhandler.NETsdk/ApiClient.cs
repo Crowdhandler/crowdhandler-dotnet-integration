@@ -188,7 +188,9 @@ namespace Crowdhandler.NETsdk
 
         protected string doRequest(HttpRequestMessage request)
         {
-            int maxRetries = 3;
+            int maxRetries = 5;
+            int delay = 1000; // Delay in milliseconds
+
             for (int i = 0; i < maxRetries; i++)
             {
                 try
@@ -203,16 +205,18 @@ namespace Crowdhandler.NETsdk
                         return response.Content.ReadAsStringAsync().Result;
                     }
                 }
-                catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
+                catch (Exception ex) //Catch all exceptions
                 {
                     // If we've exhausted retries, throw the exception.
                     if (i == maxRetries - 1)
                     {
                         throw;
                     }
+
+                    System.Threading.Thread.Sleep(delay * (i + 1)); // Increase the delay with each retry.
                 }
             }
-            return null; // Or however you want to handle ultimately unsuccessful requests.
+            return null;
         }
     }
 }
