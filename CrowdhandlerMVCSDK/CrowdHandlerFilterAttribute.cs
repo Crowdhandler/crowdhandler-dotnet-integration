@@ -22,18 +22,57 @@ namespace Crowdhandler.MVCSDK
     /// </summary>
     public class CrowdhandlerFilterAttribute : ActionFilterAttribute
     {
-        public Type GatekeeperType { get; set; }
-        public bool FailTrust { get; set; } = true;
-        public bool DebugMode { get; set; } = false;
-        
-        public string ApiEndpoint { get; set; }
-        public string PublicApiKey { get; set; }
-        public string PrivateApiKey { get; set; }
-        public string Exclusions { get; set; }
-        public string APIRequestTimeout { get; set; }
-        public string RoomCacheTTL { get; set; }
-        public string SafetyNetSlug { get; set; }
+        public Type GatekeeperType
+        {
+            get;
+            set;
+        }
+        public bool FailTrust
+        {
+            get;
+            set;
+        } = true;
+        public bool DebugMode
+        {
+            get;
+            set;
+        } = false;
 
+        public string ApiEndpoint
+        {
+            get;
+            set;
+        }
+        public string PublicApiKey
+        {
+            get;
+            set;
+        }
+        public string PrivateApiKey
+        {
+            get;
+            set;
+        }
+        public string Exclusions
+        {
+            get;
+            set;
+        }
+        public string APIRequestTimeout
+        {
+            get;
+            set;
+        }
+        public string RoomCacheTTL
+        {
+            get;
+            set;
+        }
+        public string SafetyNetSlug
+        {
+            get;
+            set;
+        }
 
         protected virtual IGateKeeper getGatekeeper()
         {
@@ -88,30 +127,26 @@ namespace Crowdhandler.MVCSDK
         public override void OnActionExecuting(ActionExecutingContext filterContext)
         {
 #if NEWDOTNET
-            var url = new Uri( Microsoft.AspNetCore.Http.Extensions.UriHelper.GetDisplayUrl(filterContext.HttpContext.Request) );
-            string userAgent = filterContext.HttpContext.Request.Headers["User-Agent"].ToString();
-            string language = filterContext.HttpContext.Request.Headers["Accept-Language"].ToString();
-            string ipAddress = String.Empty;
+      var url = new Uri(Microsoft.AspNetCore.Http.Extensions.UriHelper.GetDisplayUrl(filterContext.HttpContext.Request));
+      string userAgent = filterContext.HttpContext.Request.Headers["User-Agent"].ToString();
+      string language = filterContext.HttpContext.Request.Headers["Accept-Language"].ToString();
+      string ipAddress = String.Empty;
 
+      string forwardedForHeader = filterContext.HttpContext.Request.Headers["X-Forwarded-For"];
+      if (!string.IsNullOrEmpty(forwardedForHeader)) {
+        // Get the list of IP addresses from HTTP_X_FORWARDED_FOR header
+        string[] ipList = forwardedForHeader.ToString().Split(',');
 
-            string forwardedForHeader = filterContext.HttpContext.Request.Headers["X-Forwarded-For"];
-            if (!string.IsNullOrEmpty(forwardedForHeader))
-            {
-                // Get the list of IP addresses from HTTP_X_FORWARDED_FOR header
-                string[] ipList = forwardedForHeader.ToString().Split(',');
+        if (ipList.Length > 0) {
+          // Get the first IP in the list, which should be the original client IP
+          ipAddress = ipList[0].Trim();
+        }
+      }
 
-                if (ipList.Length > 0)
-                {
-                    // Get the first IP in the list, which should be the original client IP
-                    ipAddress = ipList[0].Trim();
-                }
-            }
-
-            // If we didn't get an IP from HTTP_X_FORWARDED_FOR, or if it was empty, use UserHostAddress
-            if (String.IsNullOrEmpty(ipAddress))
-            {
-                ipAddress = filterContext.HttpContext.Connection.RemoteIpAddress.ToString();
-            }
+      // If we didn't get an IP from HTTP_X_FORWARDED_FOR, or if it was empty, use UserHostAddress
+      if (String.IsNullOrEmpty(ipAddress)) {
+        ipAddress = filterContext.HttpContext.Connection.RemoteIpAddress.ToString();
+      }
 
 #else
             var url = filterContext.HttpContext.Request.Url;
@@ -173,17 +208,28 @@ namespace Crowdhandler.MVCSDK
                 // At this point we've failed and need to redirect to the safety waiting room
                 var safetySlug = SafetyNetSlug ?? ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
                 var failureWaitingroomUrl = gk.WaitingRoomEndpoint + $"/{safetySlug}?url={Uri.EscapeDataString(url.ToString())}&ch-code=&ch-id=&ch-public-key={gk.PublicApiKey}";
-                
+
                 filterContext.HttpContext.Response.StatusCode = 302;
                 filterContext.HttpContext.Response.Headers["Location"] = failureWaitingroomUrl;
                 return;
             }
 
-            // The result asks we set a cookie
             if (result.setCookie)
             {
-                setCookieValue(filterContext, result.cookieValue);
+                if (result.bustCookie != null && result.bustCookie != "busted")
+                {
+                    setCookieValue(filterContext, result.cookieValue);
+                }
+                else if (result.bustCookie == "busted")
+                {
+                    setCookieValue(filterContext, result.cookieValue, true); // Delete the cookie
+                }
+            //Handle checkout busting with no room match
+            } else if (result.bustCookie == "busted")
+            {
+                setCookieValue(filterContext, "", true);
             }
+
 
             if (result.Action == "allow")
             {
@@ -214,7 +260,7 @@ namespace Crowdhandler.MVCSDK
 #if OLDDOTNET
                 JSONString = filterContext.HttpContext.Request.Cookies[cookieName].Value.ToString() ?? "";
 #else
-                JSONString = filterContext.HttpContext.Request.Cookies[cookieName] ?? "";
+        JSONString = filterContext.HttpContext.Request.Cookies[cookieName] ?? "";
 #endif
                 JSONString = Uri.UnescapeDataString(JSONString);
             }
@@ -222,22 +268,37 @@ namespace Crowdhandler.MVCSDK
             return JSONString;
         }
 
-        public virtual void setCookieValue(ActionExecutingContext filterContext, String JSONString)
+        public virtual void setCookieValue(ActionExecutingContext filterContext, string JSONString, bool deleteCookie = false)
         {
+            // Check if filterContext and filterContext.HttpContext.Response are not null
+            if (filterContext == null || filterContext.HttpContext?.Response == null)
+            {
+                // Handle null case
+                return;
+            }
+
             string cookieName = this.getCookieName();
-            string cookieValue = JSONString;
+
 #if OLDDOTNET
-            HttpCookie newCookie = new HttpCookie(cookieName, cookieValue);
-            newCookie.Path = "/";
-
-            filterContext.HttpContext.Response.Cookies.Add(newCookie);
+            HttpCookie cookie = new HttpCookie(cookieName);
+            cookie.Value = JSONString;
+            cookie.Path = "/";
+            if (deleteCookie)
+            {
+                cookie.Expires = DateTime.Now.AddDays(-1); // Delete cookie
+            }
+            filterContext.HttpContext.Response.Cookies.Add(cookie);
 #else
-            CookieOptions cookieOptions = new CookieOptions();
+          CookieOptions cookieOptions = new CookieOptions();
+          if (deleteCookie) {
+            cookieOptions.Expires = DateTimeOffset.Now.AddDays(-1);
+          } else {
             cookieOptions.Path = "/";
-
-            filterContext.HttpContext.Response.Cookies.Append(cookieName, cookieValue, cookieOptions);
+          }
+          filterContext.HttpContext.Response.Cookies.Append(cookieName, JSONString, cookieOptions);
 #endif
         }
+
 
         public virtual String getCookieName()
         {
