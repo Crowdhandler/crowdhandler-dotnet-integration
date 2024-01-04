@@ -6,6 +6,7 @@ namespace Crowdhandler.NETsdk.JSONTypes
 {
     public class RoomConfig
     {
+
         [JsonProperty("slug")]
         public string Slug { get; set; }
         [JsonProperty("urlPattern")]
@@ -20,6 +21,8 @@ namespace Crowdhandler.NETsdk.JSONTypes
         public bool safetyMode { get; set; }
         [JsonProperty("timeout")]
         public int timeout { get; set; }
+        [JsonProperty("checkout")]
+        public string checkout { get; set; }
         [JsonProperty("ttl")]
         public int ttl { get; set; }
     }

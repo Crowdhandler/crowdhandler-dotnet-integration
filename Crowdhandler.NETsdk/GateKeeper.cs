@@ -67,6 +67,7 @@ namespace Crowdhandler.NETsdk
             public string Action { get; set; }
             public string redirectUrl { get; set; }
             public string targetUrl { get; set; }
+            public string bustCookie { get; set; }
             public bool setCookie { get; set; }
             public string cookieValue { get; set; }
             public string code { get; set; }
@@ -85,6 +86,9 @@ namespace Crowdhandler.NETsdk
             /*
              Urls look like this: https://www.crowdchef.net/?ch-id=tok0M7SBFAp9J8kK&ch-id-signature=73264cf4d7c5609377fd5ce3e1b7f55189c2f432e83ec11a49757b93a1eda1d8&ch-requested=2022-07-27T11%3A16%3A13Z&ch-code=&ch-fresh=true
              */
+
+            // Handle checkout busting 
+            string checkoutBusted = this.CheckoutBuster(url.Host, url.PathAndQuery);
 
             // If the URL matches the exclusion regex, return "allow"
             if (this.Exclusions != null)
@@ -105,11 +109,11 @@ namespace Crowdhandler.NETsdk
                 {
                     return new ValidateResult()
                     {
-                        Action = "allow"
+                        Action = "allow",
+                        bustCookie = checkoutBusted
                     };
                 }
-            };
-
+            }
 
             // Figure out the room from the URL if it's not provided
             if (room == null)
@@ -122,7 +126,8 @@ namespace Crowdhandler.NETsdk
             {
                 return new ValidateResult()
                 {
-                    Action = "allow"
+                    Action = "allow",
+                    bustCookie = checkoutBusted
                 };
             }
 
@@ -333,6 +338,7 @@ namespace Crowdhandler.NETsdk
                 return new ValidateResult()
                 {
                     Action = "redirect",
+                    bustCookie = "not-busted",
                     redirectUrl = cleanedUrl ?? targetUrl,
                     setCookie = true,
                     cookieValue = cookieStr
@@ -342,6 +348,7 @@ namespace Crowdhandler.NETsdk
             return new ValidateResult()
             {
                 Action = "allow",
+                bustCookie = checkoutBusted,
                 setCookie = true,
                 cookieValue = cookieStr
             };
@@ -468,16 +475,58 @@ namespace Crowdhandler.NETsdk
             }
             return null;
         }
+
+        /// <summary>
+        /// Check if the provided host and URL path match the checkout URL pattern of any room in the provided Crowdhandler Room Configuration.
+        /// </summary>
+        /// <param name="host">Hostname</param>
+        /// <param name="path">URL Path and query string</param>
+        /// <returns>True if a checkout URL pattern is matched, otherwise false</returns>
+        public virtual string IsCheckoutBuster(string host, string path, List<RoomConfig> rooms)
+        {
+            foreach (RoomConfig room in rooms)
+            {
+                if (room.domain != $"https://{host}")
+                {
+                    continue;
+                }
+
+                // Check if the path matches the checkout URL pattern
+                try
+                {
+                    Regex checkoutRegex = new Regex(room.checkout);
+                    if (checkoutRegex.IsMatch(path))
+                    {
+                        return "busted"; // Checkout pattern matched
+                    }
+                }
+                catch (ArgumentException ex)
+                {
+                    // Handle or log invalid regex pattern here
+                }
+            }
+            return "not-busted"; // No matching checkout pattern found
+        }
+    
+
         /// <summary>
         /// Test the provided host and url path match any of the rooms found via the Crowdhandler API. <see cref="Config">Room Configuration</see> 
         /// </summary>
         /// <param name="host">Hostname</param>
         /// <param name="path">URL Path and query string</param>
         /// <returns>The first matched Room, or null if one could not be found</returns>
+        ///
+
         public virtual RoomConfig IsRoomMatch(string host, string path)
         {
             return MatchRoom(host, path, this.getRoomConfig());
         }
+
+        public virtual string CheckoutBuster(string host, string path)
+        {
+            return IsCheckoutBuster(host, path, this.getRoomConfig());
+        }
+
 
         /// <summary>
         /// Look up an application configuration value from Web.config or App.config.
