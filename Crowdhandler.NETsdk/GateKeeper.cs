@@ -531,7 +531,7 @@ namespace Crowdhandler.NETsdk
         public virtual string CheckoutBuster(string host, string path, string targetUrl, String userAgent, String language, String ipAddress, string token)
         {
             string result = IsCheckoutBuster(host, path, this.getRoomConfig());
-            if (result == “busted”)
+            if (result == "busted")
             {
                 try
                 {
@@ -542,7 +542,7 @@ namespace Crowdhandler.NETsdk
                 catch (Exception ex)
                 {
                     // Handle the exception (e.g., log the error, return a specific result, etc.)
-                    System.Diagnostics.Debug.WriteLine(“Error communicating checkout bust to CrowdHandler API: ” + ex.ToString());
+                    System.Diagnostics.Debug.WriteLine("Error communicating checkout bust to CrowdHandler API: " + ex.ToString());
                 }
             }
             return result;
