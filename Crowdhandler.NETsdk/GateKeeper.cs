@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using System.Configuration;
 using Crowdhandler.NETsdk.JSONTypes;
 using Newtonsoft.Json.Linq;
+using System.Net;
 
 namespace Crowdhandler.NETsdk
 {
@@ -53,7 +54,7 @@ namespace Crowdhandler.NETsdk
         public GateKeeper(String publicKey = null, String privateKey = null, String apiEndpoint = null, String waitingRoomEndpoint = null, String exclusions = null, String apiRequestTimeout = null, String roomCacheTTL = null, String safetyNetSlug = null)
         {
             this.PublicApiKey = publicKey ?? this.getConfigValue("CROWDHANDLER_PUBLIC_KEY", true);
-            this.PrivateApiKey = privateKey ?? this.getConfigValue("CROWDHANDLER_PRIVATE_KEY", true); 
+            this.PrivateApiKey = privateKey ?? this.getConfigValue("CROWDHANDLER_PRIVATE_KEY", true);
             this.ApiEndpoint = apiEndpoint ?? this.getConfigValue("CROWDHANDLER_API_ENDPOINT", false) ?? "https://api.crowdhandler.com";
             this.WaitingRoomEndpoint = waitingRoomEndpoint ?? this.getConfigValue("CROWDHANDLER_WR_ENDPOINT", false) ?? "https://wait.crowdhandler.com";
             this.Exclusions = exclusions ?? this.getConfigValue("CROWDHANDLER_EXCLUSIONS_REGEX", false) ?? @"^((?!.*\?).*(\.(avi|css|eot|gif|ICO|jpg|jpeg|js|json|mov|mp4|mpeg|mpg|og[g|v]|pdf|png|svg|ttf|txt|wmv|woff|woff2|xml)))$";
@@ -86,50 +87,6 @@ namespace Crowdhandler.NETsdk
             /*
              Urls look like this: https://www.crowdchef.net/?ch-id=tok0M7SBFAp9J8kK&ch-id-signature=73264cf4d7c5609377fd5ce3e1b7f55189c2f432e83ec11a49757b93a1eda1d8&ch-requested=2022-07-27T11%3A16%3A13Z&ch-code=&ch-fresh=true
              */
-
-            // Handle checkout busting 
-            string checkoutBusted = this.CheckoutBuster(url.Host, url.PathAndQuery);
-
-            // If the URL matches the exclusion regex, return "allow"
-            if (this.Exclusions != null)
-            {
-                Regex exclusions;
-
-                try
-                {
-                    exclusions = new Regex(Exclusions);
-                }
-                catch (ArgumentException)
-                {
-                    throw new ArgumentException("Exclusions value is not a valid regular expression");
-                }
-
-
-                if (exclusions.IsMatch(url.PathAndQuery))
-                {
-                    return new ValidateResult()
-                    {
-                        Action = "allow",
-                        bustCookie = checkoutBusted
-                    };
-                }
-            }
-
-            // Figure out the room from the URL if it's not provided
-            if (room == null)
-            {
-                room = this.IsRoomMatch(url.Host, url.PathAndQuery);
-            }
-
-            // if we can't match against a room we can't validate anything, so we send you through
-            if (room == null)
-            {
-                return new ValidateResult()
-                {
-                    Action = "allow",
-                    bustCookie = checkoutBusted
-                };
-            }
 
             DateTime requestStartTime = DateTime.UtcNow;
 
@@ -214,6 +171,7 @@ namespace Crowdhandler.NETsdk
             String exactSignature = "";
             List<CookieSignature> candidateSignatures = null;
 
+
             //If the chID is not present, use the crowdhandlerCookieValue
             if (chId != "")
             {
@@ -224,6 +182,55 @@ namespace Crowdhandler.NETsdk
                 token = cookieData.tokens.Last().token;
             }
 
+            // Step 4: Decide if we should proceed or not
+
+            // Handle checkout busting 
+            string checkoutBusted = this.CheckoutBuster(url.Host, url.PathAndQuery, targetUrl, userAgent, language, ipAddress, token);
+
+            // If the URL matches the exclusion regex, return "allow"
+            if (this.Exclusions != null)
+            {
+                Regex exclusions;
+
+                try
+                {
+                    exclusions = new Regex(Exclusions);
+                }
+                catch (ArgumentException)
+                {
+                    throw new ArgumentException("Exclusions value is not a valid regular expression");
+                }
+
+
+                if (exclusions.IsMatch(url.PathAndQuery))
+                {
+                    return new ValidateResult()
+                    {
+                        Action = "allow",
+                        bustCookie = checkoutBusted
+                    };
+                }
+            }
+
+            // Figure out the room from the URL if it's not provided
+            if (room == null)
+            {
+                room = this.IsRoomMatch(url.Host, url.PathAndQuery);
+            }
+
+            // if we can't match against a room we can't validate anything, so we send you through
+            if (room == null)
+            {
+                return new ValidateResult()
+                {
+                    Action = "allow",
+                    bustCookie = checkoutBusted
+                };
+            }
+
+
+            // Step 5: Validate the signatures
+
             //If the chIDSignature is not present, use the crowdhandlerCookieValue
             if (chIdSignature != "")
             {
@@ -233,8 +240,6 @@ namespace Crowdhandler.NETsdk
             {
                 candidateSignatures = cookieData.tokens.Last().signatures;
             }
-
-            // Step 4: Validate the signatures
 
             ValidateSignatureResponse sigResponse = new ValidateSignatureResponse() { expired = false, success = false }; // treat the validation as failed by default
 
@@ -507,7 +512,7 @@ namespace Crowdhandler.NETsdk
             }
             return "not-busted"; // No matching checkout pattern found
         }
-    
+
 
         /// <summary>
         /// Test the provided host and url path match any of the rooms found via the Crowdhandler API. <see cref="Config">Room Configuration</see> 
@@ -522,11 +527,26 @@ namespace Crowdhandler.NETsdk
             return MatchRoom(host, path, this.getRoomConfig());
         }
 
-        public virtual string CheckoutBuster(string host, string path)
-        {
-            return IsCheckoutBuster(host, path, this.getRoomConfig());
-        }
 
+        public virtual string CheckoutBuster(string host, string path, string targetUrl, String userAgent, String language, String ipAddress, string token)
+        {
+            string result = IsCheckoutBuster(host, path, this.getRoomConfig());
+            if (result == “busted”)
+            {
+                try
+                {
+                    // Fire an HTTP request
+                    var apiClient = GetApiClient();
+                    apiClient.getToken(targetUrl, userAgent, language, ipAddress, token);
+                }
+                catch (Exception ex)
+                {
+                    // Handle the exception (e.g., log the error, return a specific result, etc.)
+                    System.Diagnostics.Debug.WriteLine(“Error communicating checkout bust to CrowdHandler API: ” + ex.ToString());
+                }
+            }
+            return result;
+        }
 
         /// <summary>
         /// Look up an application configuration value from Web.config or App.config.
