@@ -436,7 +436,15 @@ namespace Crowdhandler.NETsdk
             {
                 return null;
             }
-            return Newtonsoft.Json.JsonConvert.DeserializeObject<CookieData>(JSONCookieData);
+            try
+            {
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<CookieData>(JSONCookieData);
+            }
+            catch (Exception)
+            {
+                // Malformed or tampered cookie — treat as no cookie
+                return null;
+            }
         }
 
         /// <summary>
@@ -460,10 +468,25 @@ namespace Crowdhandler.NETsdk
                 switch (room.patternType)
                 {
                     case "regex":
-                        Regex reg = new Regex(room.urlPattern);
-                        matched = reg.IsMatch(path);
+                        if (string.IsNullOrEmpty(room.urlPattern))
+                        {
+                            break;
+                        }
+                        try
+                        {
+                            Regex reg = new Regex(room.urlPattern);
+                            matched = reg.IsMatch(path);
+                        }
+                        catch (ArgumentException)
+                        {
+                            // Invalid regex from API — skip this room
+                        }
                         break;
                     case "contains":
+                        if (string.IsNullOrEmpty(room.urlPattern))
+                        {
+                            break;
+                        }
                         matched = path.Contains(room.urlPattern);
                         break;
                     case "all":
@@ -497,6 +520,10 @@ namespace Crowdhandler.NETsdk
                 }
 
                 // Check if the path matches the checkout URL pattern
+                if (string.IsNullOrEmpty(room.checkout))
+                {
+                    continue;
+                }
                 try
                 {
                     Regex checkoutRegex = new Regex(room.checkout);
@@ -505,9 +532,9 @@ namespace Crowdhandler.NETsdk
                         return "busted"; // Checkout pattern matched
                     }
                 }
-                catch (ArgumentException ex)
+                catch (ArgumentException)
                 {
-                    // Handle or log invalid regex pattern here
+                    // Invalid regex from API — skip this room
                 }
             }
             return "not-busted"; // No matching checkout pattern found
