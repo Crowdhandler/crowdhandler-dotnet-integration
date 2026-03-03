@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.Caching;
 
@@ -22,6 +23,7 @@ namespace Crowdhandler.NETsdk
         // HttpClient objects in this list, as they may be recycled and used by other threads. For example setting the api key on
         // client.DefaultRequestHeaders would be a bad idea as this could be re-cycled
         internal static LimitedPool<HttpClient> _httpClientPool;
+        private static readonly object _poolLock = new object();
 
         protected string apiUrl;
         protected string publicApiKey;
@@ -41,8 +43,17 @@ namespace Crowdhandler.NETsdk
             const SecurityProtocolType tls13 = (SecurityProtocolType)12288;
             ServicePointManager.SecurityProtocol = tls13 | SecurityProtocolType.Tls12;
 
-            var fivemins = new TimeSpan(0, 5, 0);
-            _httpClientPool = new LimitedPool<HttpClient>(CreateClientObject, client => client.Dispose(), fivemins);
+            if (_httpClientPool == null)
+            {
+                lock (_poolLock)
+                {
+                    if (_httpClientPool == null)
+                    {
+                        var fivemins = new TimeSpan(0, 5, 0);
+                        _httpClientPool = new LimitedPool<HttpClient>(CreateClientObject, client => client.Dispose(), fivemins);
+                    }
+                }
+            }
         }
         protected HttpClient CreateClientObject()
         {
@@ -188,21 +199,59 @@ namespace Crowdhandler.NETsdk
 
         protected string doRequest(HttpRequestMessage request)
         {
-            int maxRetries = 5;
-            int delay = 1000; // Delay in milliseconds
+            int maxRetries = 2;
+            int delay = 0; // No delay between retries — total worst case is 2 x apiRequestTimeout (default 3s = 6s total)
+
+            // Capture request details upfront so we can build a fresh HttpRequestMessage per attempt.
+            // HttpRequestMessage can only be sent once — reusing it throws InvalidOperationException.
+            var method = request.Method;
+            var uri = request.RequestUri;
+            var headers = new List<KeyValuePair<string, IEnumerable<string>>>();
+            foreach (var header in request.Headers)
+            {
+                headers.Add(header);
+            }
+            byte[] bodyBytes = null;
+            string contentType = null;
+            if (request.Content != null)
+            {
+                bodyBytes = request.Content.ReadAsByteArrayAsync().Result;
+                contentType = request.Content.Headers.ContentType?.ToString();
+            }
 
             for (int i = 0; i < maxRetries; i++)
             {
                 try
                 {
+                    var msg = new HttpRequestMessage(method, uri);
+                    foreach (var header in headers)
+                    {
+                        msg.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
+                    if (bodyBytes != null)
+                    {
+                        msg.Content = new ByteArrayContent(bodyBytes);
+                        if (contentType != null)
+                        {
+                            msg.Content.Headers.Remove("Content-Type");
+                            msg.Content.Headers.TryAddWithoutValidation("Content-Type", contentType);
+                        }
+                    }
+
                     using (var httpClientContainer = _httpClientPool.Get())
                     {
                         HttpClient client = httpClientContainer.Value;
-                        var task = Task.Run(() => client.SendAsync(request));
+                        var task = Task.Run(() => client.SendAsync(msg));
                         task.Wait();
-                        var response = task.Result;
+                        using (var response = task.Result)
+                        {
+                            if ((int)response.StatusCode >= 400)
+                            {
+                                throw new HttpRequestException($"CrowdHandler API returned HTTP {(int)response.StatusCode}");
+                            }
 
-                        return response.Content.ReadAsStringAsync().Result;
+                            return response.Content.ReadAsStringAsync().Result;
+                        }
                     }
                 }
                 catch (Exception ex) //Catch all exceptions
@@ -213,7 +262,7 @@ namespace Crowdhandler.NETsdk
                         throw;
                     }
 
-                    System.Threading.Thread.Sleep(delay * (i + 1)); // Increase the delay with each retry.
+                    Thread.Sleep(delay * (i + 1)); // Increase the delay with each retry.
                 }
             }
             return null;

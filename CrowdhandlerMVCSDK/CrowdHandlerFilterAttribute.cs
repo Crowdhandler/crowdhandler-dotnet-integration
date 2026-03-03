@@ -80,7 +80,7 @@ namespace Crowdhandler.MVCSDK
             if (GatekeeperType == null)
             {
                 // If the api properties are not set on this object they should be null, and therefore allow the gatekeeper defaults to kick in
-                return new GateKeeper(ApiEndpoint, PublicApiKey, PrivateApiKey, Exclusions, APIRequestTimeout, RoomCacheTTL);
+                return new GateKeeper(PublicApiKey, PrivateApiKey, ApiEndpoint, null, Exclusions, APIRequestTimeout, RoomCacheTTL, SafetyNetSlug);
             }
 
             if (!typeof(IGateKeeper).IsAssignableFrom(GatekeeperType))
