@@ -1,20 +1,37 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net45;net5.0</TargetFrameworks>
+    <TargetFrameworks>net472;net6.0;net8.0</TargetFrameworks>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Version>1.1.0</Version>
     <Company>Crowdhandler</Company>
     <Authors>Crowdhandler</Authors>
-    <Description>Protect your MVC applications with Crowdhandler</Description>
+    <Description>Protect your ASP.NET MVC and ASP.NET Core applications with CrowdHandler waiting rooms. Drop-in action filter for MVC 5 and ASP.NET Core, plus middleware and options binding for ASP.NET Core.</Description>
+    <PackageTags>crowdhandler;waiting-room;queue;virtual-waiting-room;ticketing;aspnetcore;mvc;middleware</PackageTags>
     <PackageProjectUrl>https://www.crowdhandler.com/</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <Version>1.0.11</Version>
     <PackageIcon>branding.png</PackageIcon>
-    <AssemblyVersion></AssemblyVersion>
+    <PackageReleaseNotes>See CHANGELOG.md in the repository.</PackageReleaseNotes>
+    <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Crowdhandler/crowdhandler-dotnet-integration</RepositoryUrl>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <CheckEolTargetFramework>false</CheckEolTargetFramework>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Crowdhandler.MVCSDK.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="branding.png" Pack="true" PackagePath="\" />
@@ -24,26 +41,27 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Crowdhandler.NETsdk\Crowdhandler.NETsdk.csproj" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 
-  
-  <ItemGroup Condition="'$(TargetFramework)' == 'net5.0'">
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.2.5" />
+  <!-- ASP.NET Core: the framework ships MVC, so reference the shared framework rather than an out-of-support Mvc.Core package. -->
+  <ItemGroup Condition="'$(TargetFramework)' != 'net472'">
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
-  
-  <ItemGroup Condition="'$(TargetFramework)' == 'net45'">
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <Compile Remove="AspNetCore\**" />
     <PackageReference Include="Microsoft.AspNet.Mvc" Version="5.2.9" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Web" />
   </ItemGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net5.0'">
-    <DefineConstants>NETCORE;NEWDOTNET</DefineConstants>
+  <PropertyGroup Condition="'$(TargetFramework)' != 'net472'">
+    <DefineConstants>$(DefineConstants);NETCORE;NEWDOTNET</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(TargetFramework)' == 'net45'">
-    <DefineConstants>NET45;OLDDOTNET</DefineConstants>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net472'">
+    <DefineConstants>$(DefineConstants);OLDDOTNET</DefineConstants>
   </PropertyGroup>
 
 </Project>

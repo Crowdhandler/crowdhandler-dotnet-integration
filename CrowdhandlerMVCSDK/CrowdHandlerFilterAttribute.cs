@@ -1,308 +1,380 @@
-﻿using System;
-using System.Text.RegularExpressions;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 using Crowdhandler.NETsdk;
-using System.Configuration;
 
-// .net 4 web APIs come out of System.Web
 #if OLDDOTNET
+using System.Configuration;
 using System.Web;
 using System.Web.Mvc;
 #endif
 
-// .net 5/core assemblies use Microsoft.AspNetCore, but they have the API so everything else should work
 #if NEWDOTNET
+using Crowdhandler.MVCSDK.AspNetCore;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 #endif
 
 namespace Crowdhandler.MVCSDK
 {
     /// <summary>
-    /// A filter attribute to apply Crowdhandler waiting rooms to your MVC Controller actions
+    /// Apply CrowdHandler waiting rooms to MVC controller actions: <c>[CrowdhandlerFilter]</c>.
+    /// Works on ASP.NET MVC 5 and ASP.NET Core MVC. On ASP.NET Core, unset properties fall back to the
+    /// <see cref="CrowdhandlerOptions"/> registered with <c>services.AddCrowdhandler(...)</c>; on both, to
+    /// <c>appSettings</c> (<c>CROWDHANDLER_*</c> keys) and then the SDK defaults.
     /// </summary>
     public class CrowdhandlerFilterAttribute : ActionFilterAttribute
     {
-        public Type GatekeeperType
-        {
-            get;
-            set;
-        }
-        public bool FailTrust
-        {
-            get;
-            set;
-        } = true;
-        public bool DebugMode
-        {
-            get;
-            set;
-        } = false;
+        internal const string PerformanceItemKey = "Crowdhandler.Performance";
 
-        public string ApiEndpoint
+        /// <summary>A custom <see cref="IGateKeeper"/> implementation to use instead of the default.</summary>
+        public Type GatekeeperType { get; set; }
+
+        private bool _failTrust = true, _failTrustExplicit;
+        private bool _debugMode, _debugModeExplicit;
+        private double _performanceSampleRate = 0.2;
+        private bool _performanceSampleRateExplicit;
+
+        /// <summary>Let visitors through when the CrowdHandler API is unreachable. Default true. See <see cref="CrowdhandlerOptions.FailTrust"/>.</summary>
+        public bool FailTrust { get { return _failTrust; } set { _failTrust = value; _failTrustExplicit = true; } }
+
+        /// <summary>Rethrow validation errors. Local development only.</summary>
+        public bool DebugMode { get { return _debugMode; } set { _debugMode = value; _debugModeExplicit = true; } }
+
+        public string ApiEndpoint { get; set; }
+        public string PublicApiKey { get; set; }
+        public string PrivateApiKey { get; set; }
+        public string WaitingRoomEndpoint { get; set; }
+        public string Exclusions { get; set; }
+        public string APIRequestTimeout { get; set; }
+        public string RoomCacheTTL { get; set; }
+        public string SafetyNetSlug { get; set; }
+
+        /// <summary>Cookie domain, e.g. ".example.com" to share the session across subdomains.</summary>
+        public string CookieDomain { get; set; }
+
+        /// <summary>Header carrying the original client IP behind a proxy. Default X-Forwarded-For.</summary>
+        public string ClientIpHeader { get; set; }
+
+        /// <summary>Fraction of responses whose timing is reported to CrowdHandler. Default 0.2; 0 disables.</summary>
+        public double PerformanceSampleRate { get { return _performanceSampleRate; } set { _performanceSampleRate = value; _performanceSampleRateExplicit = true; } }
+
+        private double _checkInIntervalMinutes;
+        private bool _checkInIntervalExplicit;
+
+        /// <summary>Minutes between periodic API check-ins for locally validated visitors. Default 2 (from the gatekeeper) when not set; 0 disables. See <see cref="CrowdhandlerOptions.CheckInIntervalMinutes"/>.</summary>
+        public double CheckInIntervalMinutes { get { return _checkInIntervalMinutes; } set { _checkInIntervalMinutes = value; _checkInIntervalExplicit = true; } }
+
+        /// <summary>The options this attribute's own properties express (unset properties are null).</summary>
+        protected virtual CrowdhandlerOptions GetAttributeOptions()
         {
-            get;
-            set;
-        }
-        public string PublicApiKey
-        {
-            get;
-            set;
-        }
-        public string PrivateApiKey
-        {
-            get;
-            set;
-        }
-        public string Exclusions
-        {
-            get;
-            set;
-        }
-        public string APIRequestTimeout
-        {
-            get;
-            set;
-        }
-        public string RoomCacheTTL
-        {
-            get;
-            set;
-        }
-        public string SafetyNetSlug
-        {
-            get;
-            set;
+            return new CrowdhandlerOptions
+            {
+                PublicApiKey = PublicApiKey,
+                PrivateApiKey = PrivateApiKey,
+                ApiEndpoint = ApiEndpoint,
+                WaitingRoomEndpoint = WaitingRoomEndpoint,
+                Exclusions = Exclusions,
+                ApiRequestTimeoutSeconds = ParseInt(APIRequestTimeout),
+                RoomCacheSeconds = ParseInt(RoomCacheTTL),
+                SafetyNetSlug = SafetyNetSlug,
+                FailTrust = _failTrustExplicit ? FailTrust : (bool?)null,
+                DebugMode = _debugModeExplicit ? DebugMode : (bool?)null,
+                CookieName = Overrides(nameof(getCookieName), Type.EmptyTypes) ? getCookieName() : null,
+                CookieDomain = CookieDomain,
+                ClientIpHeader = ClientIpHeader,
+                PerformanceSampleRate = _performanceSampleRateExplicit ? PerformanceSampleRate : (double?)null,
+                CheckInIntervalMinutes = _checkInIntervalExplicit ? CheckInIntervalMinutes : (double?)null,
+                GatekeeperType = GatekeeperType,
+            };
         }
 
+        /// <summary>Create the gatekeeper from this attribute's properties. Override to supply your own.</summary>
         protected virtual IGateKeeper getGatekeeper()
         {
-            // if no gatekeeper is specified, use our default implementation
-            if (GatekeeperType == null)
-            {
-                // If the api properties are not set on this object they should be null, and therefore allow the gatekeeper defaults to kick in
-                return new GateKeeper(PublicApiKey, PrivateApiKey, ApiEndpoint, null, Exclusions, APIRequestTimeout, RoomCacheTTL, SafetyNetSlug);
-            }
-
-            if (!typeof(IGateKeeper).IsAssignableFrom(GatekeeperType))
-            {
-                throw new InvalidCastException("GatekeeperType MUST implement IGateKeeper");
-            }
-
-            var gk = (IGateKeeper)Activator.CreateInstance(GatekeeperType);
-
-            // Activator.CreateInstance requires some whackiness when passing constructor params, we can avoid it by modifying the properties directly
-            if (ApiEndpoint != null)
-            {
-                gk.ApiEndpoint = ApiEndpoint;
-            }
-            if (PublicApiKey != null)
-            {
-                gk.PublicApiKey = PublicApiKey;
-            }
-            if (PrivateApiKey != null)
-            {
-                gk.PrivateApiKey = PrivateApiKey;
-            }
-            if (Exclusions != null)
-            {
-                gk.Exclusions = Exclusions;
-            }
-            if (APIRequestTimeout != null)
-            {
-                gk.APIRequestTimeout = APIRequestTimeout;
-            }
-            if (RoomCacheTTL != null)
-            {
-                gk.RoomCacheTTL = RoomCacheTTL;
-            }
-
-            return gk;
+            return GetAttributeOptions().CreateGateKeeper();
         }
 
-        public override void OnActionExecuted(ActionExecutedContext filterContext)
+        /// <summary>Name of the session cookie. Override only if you also change it in the CrowdHandler control panel.</summary>
+        public virtual String getCookieName()
         {
-            // TODO: Performance tracking could go here
+            return CrowdhandlerOptions.DefaultCookieName;
+        }
+
+        private static int? ParseInt(string value)
+        {
+            return value != null && int.TryParse(value, out int parsed) ? parsed : (int?)null;
+        }
+
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, bool> _overrideCache = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>();
+
+        /// <summary>Whether a subclass overrides the named virtual method. Existing subclasses keep working on both frameworks.</summary>
+        private bool Overrides(string methodName, params Type[] parameterTypes)
+        {
+            return _overrideCache.GetOrAdd(methodName + "/" + parameterTypes.Length, _ =>
+            {
+                var m = GetType().GetMethod(methodName, System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic, null, parameterTypes, null);
+                return m != null && m.DeclaringType != typeof(CrowdhandlerFilterAttribute) && typeof(CrowdhandlerFilterAttribute).IsAssignableFrom(m.DeclaringType);
+            });
+        }
+
+#if NEWDOTNET
+        // ------------------------------------------------------------------------------------------------------
+        // ASP.NET Core
+        // ------------------------------------------------------------------------------------------------------
+
+        /// <summary>
+        /// Options for this request: attribute properties on top of any <see cref="CrowdhandlerOptions"/> registered in DI.
+        /// With a per-request <see cref="ICrowdhandlerOptionsResolver"/> registered (multi-tenant hosts), the resolved
+        /// options are used instead; a null resolution means the request bypasses CrowdHandler.
+        /// </summary>
+        protected virtual CrowdhandlerOptions ResolveOptions(HttpContext context)
+        {
+            return ResolveOptionsAsync(context).GetAwaiter().GetResult();
+        }
+
+        private async Task<CrowdhandlerOptions> ResolveOptionsAsync(HttpContext context)
+        {
+            var resolver = context?.RequestServices?.GetService<ICrowdhandlerOptionsResolver>();
+            if (resolver != null)
+            {
+                var resolved = await resolver.ResolveAsync(context).ConfigureAwait(false);
+                return resolved?.Overlay(GetAttributeOptions());
+            }
+            var registered = context?.RequestServices?.GetService<IOptions<CrowdhandlerOptions>>()?.Value;
+            return (registered ?? new CrowdhandlerOptions()).Overlay(GetAttributeOptions());
+        }
+
+        /// <summary>Gatekeeper for this request. A subclass's <c>getGatekeeper()</c> override always wins; otherwise the merged options build it.</summary>
+        protected virtual IGateKeeper getGatekeeper(HttpContext context, CrowdhandlerOptions options)
+        {
+            return Overrides(nameof(getGatekeeper), Type.EmptyTypes) ? getGatekeeper() : options.CreateGateKeeper();
+        }
+
+        public override Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+        {
+            // A subclass that overrides the synchronous OnActionExecuting (the documented customisation recipe) keeps
+            // the synchronous pipeline; everyone else gets fully asynchronous validation.
+            if (Overrides(nameof(OnActionExecuting), typeof(ActionExecutingContext)))
+            {
+                return base.OnActionExecutionAsync(context, next);
+            }
+            return ExecuteAsync(context, next);
+        }
+
+        private async Task ExecuteAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+        {
+            if (await ValidateAsync(context).ConfigureAwait(false))
+            {
+                await next().ConfigureAwait(false);
+            }
         }
 
         public override void OnActionExecuting(ActionExecutingContext filterContext)
         {
-#if NEWDOTNET
-      var url = new Uri(Microsoft.AspNetCore.Http.Extensions.UriHelper.GetDisplayUrl(filterContext.HttpContext.Request));
-      string userAgent = filterContext.HttpContext.Request.Headers["User-Agent"].ToString();
-      string language = filterContext.HttpContext.Request.Headers["Accept-Language"].ToString();
-      string ipAddress = String.Empty;
-
-      string forwardedForHeader = filterContext.HttpContext.Request.Headers["X-Forwarded-For"];
-      if (!string.IsNullOrEmpty(forwardedForHeader)) {
-        // Get the list of IP addresses from HTTP_X_FORWARDED_FOR header
-        string[] ipList = forwardedForHeader.ToString().Split(',');
-
-        if (ipList.Length > 0) {
-          // Get the first IP in the list, which should be the original client IP
-          ipAddress = ipList[0].Trim();
+            Task.Run(() => ValidateAsync(filterContext)).GetAwaiter().GetResult();
         }
-      }
 
-      // If we didn't get an IP from HTTP_X_FORWARDED_FOR, or if it was empty, use UserHostAddress
-      if (String.IsNullOrEmpty(ipAddress)) {
-        ipAddress = filterContext.HttpContext.Connection.RemoteIpAddress.ToString();
-      }
+        /// <summary>Run validation and apply the outcome to the response. Returns true if the action should run.</summary>
+        private async Task<bool> ValidateAsync(ActionExecutingContext context)
+        {
+            var options = await ResolveOptionsAsync(context.HttpContext).ConfigureAwait(false);
+            if (options == null)
+            {
+                return true; // not a CrowdHandler tenant
+            }
+            var gk = getGatekeeper(context.HttpContext, options);
+            var logger = context.HttpContext.RequestServices?.GetService<ILoggerFactory>()?.CreateLogger("Crowdhandler");
+
+            Func<string> readCookie = Overrides(nameof(getCookieValue), typeof(ActionExecutingContext)) ? () => getCookieValue(context) : (Func<string>)null;
+            Action<string, bool> writeCookie = Overrides(nameof(setCookieValue), typeof(ActionExecutingContext), typeof(string), typeof(bool)) ? (value, delete) => setCookieValue(context, value, delete) : (Action<string, bool>)null;
+
+            var outcome = await CrowdhandlerRequestProcessor.HandleAsync(context.HttpContext, options, gk, logger, readCookie, writeCookie).ConfigureAwait(false);
+
+            if (outcome.RedirectUrl != null)
+            {
+                context.Result = new RedirectResult(outcome.RedirectUrl);
+                return false;
+            }
+            if (outcome.ResponseID != null)
+            {
+                context.HttpContext.Items[PerformanceItemKey] = outcome;
+            }
+            return true;
+        }
+
+        public override void OnResultExecuted(ResultExecutedContext context)
+        {
+            if (context.HttpContext.Items.TryGetValue(PerformanceItemKey, out var stored) && stored is CrowdhandlerOutcome outcome)
+            {
+                context.HttpContext.Items.Remove(PerformanceItemKey);
+                outcome.RecordPerformance(context.HttpContext.Response.StatusCode);
+            }
+        }
+
+        /// <summary>Read the session cookie. Override to source it from elsewhere (e.g. a header).</summary>
+        public virtual String getCookieValue(ActionExecutingContext filterContext)
+        {
+            return RequestHelpers.NormaliseCookieValue(filterContext.HttpContext.Request.Cookies[this.getCookieName()]);
+        }
+
+        /// <summary>Write (or delete) the session cookie. Override to change how it is stored.</summary>
+        public virtual void setCookieValue(ActionExecutingContext filterContext, string JSONString, bool deleteCookie = false)
+        {
+            if (filterContext?.HttpContext?.Response == null)
+            {
+                return;
+            }
+            CrowdhandlerRequestProcessor.WriteCookie(filterContext.HttpContext, ResolveOptions(filterContext.HttpContext), JSONString, deleteCookie);
+        }
 
 #else
-            var url = filterContext.HttpContext.Request.Url;
-            string userAgent = filterContext.HttpContext.Request.UserAgent;
-            string language = filterContext.HttpContext.Request.UserLanguages != null ? string.Join(",", filterContext.HttpContext.Request.UserLanguages) : null;
-            string ipAddress = String.Empty;
+        // ------------------------------------------------------------------------------------------------------
+        // ASP.NET MVC 5 (System.Web)
+        // ------------------------------------------------------------------------------------------------------
 
-            if (filterContext.HttpContext.Request.ServerVariables["HTTP_X_FORWARDED_FOR"] != null)
-            {
-                // Get the list of IP addresses from HTTP_X_FORWARDED_FOR header
-                string[] ipList = filterContext.HttpContext.Request.ServerVariables["HTTP_X_FORWARDED_FOR"].Split(',');
-
-                if (ipList.Length > 0)
-                {
-                    // Get the first IP in the list, which should be the original client IP
-                    ipAddress = ipList[0].Trim();
-                }
-            }
-
-            // If we didn't get an IP from HTTP_X_FORWARDED_FOR, or if it was empty, use UserHostAddress
-            if (String.IsNullOrEmpty(ipAddress))
-            {
-                ipAddress = HttpContext.Current.Request.UserHostAddress;
-            }
-#endif
-            string CookieData = this.getCookieValue(filterContext);
+        public override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            var request = filterContext.HttpContext.Request;
+            var response = filterContext.HttpContext.Response;
+            Uri url = request.Url;
+            string userAgent = request.UserAgent;
+            string language = request.Headers["Accept-Language"];
+            string ipAddress = getIpAddress(filterContext);
+            string cookieData = this.getCookieValue(filterContext);
 
             IGateKeeper gk = this.getGatekeeper();
-
             GateKeeper.ValidateResult result;
 
             try
             {
-                result = gk.Validate(url, userAgent, language, ipAddress, CookieData);
+                result = gk.Validate(url, userAgent, language, ipAddress, cookieData);
             }
             catch (Exception ex)
             {
-                // We explicitly throw two exceptions based on bad configuration values
-                if (ex is InvalidCastException || ex is MissingFieldException)
+                // Configuration problems are never swallowed: surface them.
+                if (ex is InvalidCastException || ex is MissingFieldException || ex is ArgumentException || ex is InvalidOperationException || this.DebugMode)
                 {
                     throw;
                 }
 
-                // If we're in debug mode, throw the exception
-                if (this.DebugMode)
+                bool rejected = ex is CrowdhandlerApiException api && api.IsClientError;
+                LogError(rejected ? "CrowdHandler API rejected the request; visitor sent to the waiting room. Check your API keys." : "CrowdHandler validation failed", ex);
+
+                if (this.FailTrust && !rejected)
                 {
-                    throw;
+                    return; // trust on fail: carry on with the request
                 }
 
-                // Write to the error log
-                Console.Error.WriteLine("Exception in CrowdHandlerFilterAttribute: {0}", ex);
-
-                if (this.FailTrust)
-                {
-                    // we immediatley cancel execution and return to the controller to carry on with the request
-                    return;
-                }
-
-                // At this point we've failed and need to redirect to the safety waiting room
-                var safetySlug = SafetyNetSlug ?? ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
-                var failureWaitingroomUrl = gk.WaitingRoomEndpoint + $"/{safetySlug}?url={Uri.EscapeDataString(url.ToString())}&ch-code=&ch-id=&ch-public-key={gk.PublicApiKey}";
-
-                filterContext.HttpContext.Response.StatusCode = 302;
-                filterContext.HttpContext.Response.Headers["Location"] = failureWaitingroomUrl;
+                var safetySlug = SafetyNetSlug ?? (gk as GateKeeper)?.SafetyNetSlug ?? ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
+                SetNoCache(response);
+                filterContext.Result = new RedirectResult(GateKeeper.BuildWaitingRoomUrl(gk.WaitingRoomEndpoint, gk.PublicApiKey, safetySlug, GateKeeper.RemoveCrowdhandlerParameters(url)));
                 return;
             }
 
-            if (result.setCookie)
+            if (result.apiError != null)
             {
-                if (result.bustCookie != null && result.bustCookie != "busted")
-                {
-                    setCookieValue(filterContext, result.cookieValue);
-                }
-                else if (result.bustCookie == "busted")
-                {
-                    setCookieValue(filterContext, result.cookieValue, true); // Delete the cookie
-                }
-            //Handle checkout busting with no room match
-            } else if (result.bustCookie == "busted")
+                LogError("CrowdHandler API rejected the request (HTTP " + result.apiError.StatusCode + "); visitor sent to the waiting room. Check your API keys.", result.apiError);
+            }
+
+            if (result.bustCookie == "busted")
             {
                 setCookieValue(filterContext, "", true);
             }
-
-
-            if (result.Action == "allow")
+            else if (result.setCookie)
             {
-                // success and/or no validation required
-                return;
+                setCookieValue(filterContext, result.cookieValue);
             }
-
-            // Set the no cache headers
-            filterContext.HttpContext.Response.Headers.Add("Cache-Control", "no-cache, no-store, must-revalidate");
-            filterContext.HttpContext.Response.Headers.Add("Expires", "Fri, 01 Jan 1970 00:00:00 GMT");
-            filterContext.HttpContext.Response.Headers.Add("Pragma", "no-cache");
 
             if (result.Action == "redirect")
             {
-                filterContext.HttpContext.Response.StatusCode = 302;
-                filterContext.HttpContext.Response.Headers["Location"] = result.redirectUrl;
+                SetNoCache(response);
+                filterContext.Result = new RedirectResult(result.redirectUrl);
                 return;
             }
+
+            if (result.responseID != null && gk is GateKeeper concrete && PerformanceSampleRate > 0)
+            {
+                // Origin timing starts after validation so the SDK's own API calls are not counted.
+                filterContext.HttpContext.Items[PerformanceItemKey] = new Tuple<GateKeeper, GateKeeper.ValidateResult, long>(concrete, result, Stopwatch.GetTimestamp());
+            }
+        }
+
+        public override void OnResultExecuted(ResultExecutedContext filterContext)
+        {
+            if (filterContext.HttpContext.Items[PerformanceItemKey] is Tuple<GateKeeper, GateKeeper.ValidateResult, long> perf)
+            {
+                filterContext.HttpContext.Items.Remove(PerformanceItemKey);
+                long elapsedMs = (Stopwatch.GetTimestamp() - perf.Item3) * 1000 / Stopwatch.Frequency;
+                var result = perf.Item2;
+                perf.Item1.RecordPerformance(result.responseID, filterContext.HttpContext.Response.StatusCode, elapsedMs, result.checkIn ? 1.0 : PerformanceSampleRate);
+            }
+        }
+
+        /// <summary>The visitor's IP address: first entry of <see cref="ClientIpHeader"/> if present, else the socket address. Override for other proxy conventions.</summary>
+        protected virtual string getIpAddress(ActionExecutingContext filterContext)
+        {
+            var request = filterContext.HttpContext.Request;
+            string headerName = string.IsNullOrEmpty(ClientIpHeader) ? "X-Forwarded-For" : ClientIpHeader;
+            string forwarded = request.Headers[headerName];
+            return RequestHelpers.ExtractClientIp(forwarded, request.UserHostAddress);
         }
 
         public virtual String getCookieValue(ActionExecutingContext filterContext)
         {
-            String JSONString = "";
-
-            string cookieName = this.getCookieName();
-            if (filterContext.HttpContext.Request.Cookies[cookieName] != null)
-            {
-#if OLDDOTNET
-                JSONString = filterContext.HttpContext.Request.Cookies[cookieName].Value.ToString() ?? "";
-#else
-        JSONString = filterContext.HttpContext.Request.Cookies[cookieName] ?? "";
-#endif
-                JSONString = Uri.UnescapeDataString(JSONString);
-            }
-
-            return JSONString;
+            var cookie = filterContext.HttpContext.Request.Cookies[this.getCookieName()];
+            return RequestHelpers.NormaliseCookieValue(cookie?.Value);
         }
 
         public virtual void setCookieValue(ActionExecutingContext filterContext, string JSONString, bool deleteCookie = false)
         {
-            // Check if filterContext and filterContext.HttpContext.Response are not null
-            if (filterContext == null || filterContext.HttpContext?.Response == null)
+            if (filterContext?.HttpContext?.Response == null)
             {
-                // Handle null case
                 return;
             }
-
-            string cookieName = this.getCookieName();
-
-#if OLDDOTNET
-            HttpCookie cookie = new HttpCookie(cookieName);
-            cookie.Value = JSONString;
-            cookie.Path = "/";
+            var request = filterContext.HttpContext.Request;
+            var cookie = new HttpCookie(this.getCookieName())
+            {
+                Path = "/",
+                HttpOnly = false, // CrowdHandler's client-side script reads it
+                Secure = request.IsSecureConnection,
+            };
+            if (!string.IsNullOrEmpty(CookieDomain))
+            {
+                cookie.Domain = CookieDomain;
+            }
             if (deleteCookie)
             {
-                cookie.Expires = DateTime.Now.AddDays(-1); // Delete cookie
+                cookie.Value = "";
+                cookie.Expires = DateTime.UtcNow.AddYears(-1);
             }
-            filterContext.HttpContext.Response.Cookies.Add(cookie);
-#else
-          CookieOptions cookieOptions = new CookieOptions();
-          if (deleteCookie) {
-            cookieOptions.Expires = DateTimeOffset.Now.AddDays(-1);
-          } else {
-            cookieOptions.Path = "/";
-          }
-          filterContext.HttpContext.Response.Cookies.Append(cookieName, JSONString, cookieOptions);
-#endif
+            else
+            {
+                cookie.Value = Uri.EscapeDataString(JSONString ?? "");
+            }
+            // A response that sets or deletes the per-visitor session cookie must never be cached by a shared cache.
+            filterContext.HttpContext.Response.Cache.SetCacheability(HttpCacheability.Private);
+            filterContext.HttpContext.Response.Cookies.Set(cookie);
         }
 
-
-        public virtual String getCookieName()
+        private static void SetNoCache(HttpResponseBase response)
         {
-            return "crowdhandler";
+            // Works in both classic and integrated pipeline modes (Response.Headers does not).
+            response.Cache.SetCacheability(HttpCacheability.NoCache);
+            response.Cache.SetNoStore();
+            response.Cache.SetRevalidation(HttpCacheRevalidation.AllCaches);
+            response.Cache.SetExpires(new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc));
         }
+
+        /// <summary>Error output. Writes to <see cref="Trace"/>; override to route into your logging.</summary>
+        protected virtual void LogError(string message, Exception exception)
+        {
+            Trace.TraceError("CrowdHandler: {0}: {1}", message, exception);
+        }
+#endif
     }
 }
