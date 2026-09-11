@@ -11,6 +11,8 @@ Virtual waiting rooms for .NET applications, by [CrowdHandler](https://www.crowd
 | [`Crowdhandler.MVCSDK`](https://www.nuget.org/packages/Crowdhandler.MVCSDK) | ASP.NET Core (middleware + action filter) and ASP.NET MVC 5 (action filter). **Start here.** | `net8.0`, `net6.0`, `net472` |
 | [`Crowdhandler.NETsdk`](https://www.nuget.org/packages/Crowdhandler.NETsdk) | The validation core, for any other .NET host. | `netstandard2.0`, `net472` |
 
+The `net8.0` build serves .NET 8 and every later version; .NET 9 and 10 applications resolve to it automatically. Tested on .NET 6, 8 and 10, and on .NET Framework 4.7.2.
+
 ## Quick start (ASP.NET Core)
 
 ```

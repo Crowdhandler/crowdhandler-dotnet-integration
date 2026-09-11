@@ -2,7 +2,7 @@
 
 The official [CrowdHandler](https://www.crowdhandler.com) virtual waiting room integration for ASP.NET Core and ASP.NET MVC 5.
 
-* **ASP.NET Core 6, 8 and later**: middleware (`app.UseCrowdhandler()`) or action filter (`[CrowdhandlerFilter]`), configured from `appsettings.json`.
+* **ASP.NET Core 6, 8, 9 and 10**: middleware (`app.UseCrowdhandler()`) or action filter (`[CrowdhandlerFilter]`), configured from `appsettings.json`.
 * **ASP.NET MVC 5 (.NET Framework 4.7.2 and later)**: action filter (`[CrowdhandlerFilter]`), configured from `Web.config`.
 
 Both are built on [`Crowdhandler.NETsdk`](https://www.nuget.org/packages/Crowdhandler.NETsdk/), which performs the validation and can be used on its own in any .NET application.
