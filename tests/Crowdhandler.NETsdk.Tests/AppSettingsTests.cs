@@ -68,6 +68,20 @@ namespace Crowdhandler.NETsdk.Tests
             }
         }
 
+        [Theory]
+        [InlineData("")]
+        [InlineData("   ")]
+        public void BlankKey_IsTreatedAsMissing(string blank)
+        {
+            UseConfig("");
+            Assert.Throws<MissingFieldException>(() => new GateKeeper(blank, "priv"));
+            Assert.Throws<MissingFieldException>(() => new GateKeeper("pub", blank));
+            // blank optional endpoints fall back to the defaults
+            var gk = new GateKeeper("pub", "priv", blank, blank);
+            Assert.Equal("https://api.crowdhandler.com", gk.ApiEndpoint);
+            Assert.Equal("https://wait.crowdhandler.com", gk.WaitingRoomEndpoint);
+        }
+
         [Fact]
         public void MissingRequiredKey_Throws_WithTheKeyName()
         {

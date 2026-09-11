@@ -95,10 +95,12 @@ namespace Crowdhandler.NETsdk
 
         public GateKeeper(String publicKey = null, String privateKey = null, String apiEndpoint = null, String waitingRoomEndpoint = null, String exclusions = null, String apiRequestTimeout = null, String roomCacheTTL = null, String safetyNetSlug = null, String checkInIntervalMinutes = null)
         {
-            this.PublicApiKey = publicKey ?? this.getConfigValue("CROWDHANDLER_PUBLIC_KEY", true);
-            this.PrivateApiKey = privateKey ?? this.getConfigValue("CROWDHANDLER_PRIVATE_KEY", true);
-            this.ApiEndpoint = apiEndpoint ?? this.getConfigValue("CROWDHANDLER_API_ENDPOINT", false) ?? "https://api.crowdhandler.com";
-            this.WaitingRoomEndpoint = waitingRoomEndpoint ?? this.getConfigValue("CROWDHANDLER_WR_ENDPOINT", false) ?? "https://wait.crowdhandler.com";
+            // Blank values (an unfilled appsettings placeholder, say) count as missing: a blank key must fail loudly here,
+            // not later as an API failure that trust-on-fail would wave through.
+            this.PublicApiKey = Required("CROWDHANDLER_PUBLIC_KEY", publicKey);
+            this.PrivateApiKey = Required("CROWDHANDLER_PRIVATE_KEY", privateKey);
+            this.ApiEndpoint = Blank(apiEndpoint) ? Blank(this.getConfigValue("CROWDHANDLER_API_ENDPOINT", false)) ? "https://api.crowdhandler.com" : this.getConfigValue("CROWDHANDLER_API_ENDPOINT", false) : apiEndpoint;
+            this.WaitingRoomEndpoint = Blank(waitingRoomEndpoint) ? Blank(this.getConfigValue("CROWDHANDLER_WR_ENDPOINT", false)) ? "https://wait.crowdhandler.com" : this.getConfigValue("CROWDHANDLER_WR_ENDPOINT", false) : waitingRoomEndpoint;
             this.Exclusions = exclusions ?? this.getConfigValue("CROWDHANDLER_EXCLUSIONS_REGEX", false) ?? DefaultExclusions;
             this.APIRequestTimeout = apiRequestTimeout ?? this.getConfigValue("CROWDHANDLER_API_REQUEST_TIMEOUT", false) ?? ApiClient.DefaultApiRequestTimeoutSeconds.ToString();
             this.RoomCacheTTL = roomCacheTTL ?? this.getConfigValue("CROWDHANDLER_ROOM_CACHE_TIME", false) ?? ApiClient.DefaultRoomCacheSeconds.ToString();
@@ -773,6 +775,18 @@ namespace Crowdhandler.NETsdk
                 }
             }
             return result;
+        }
+
+        private static bool Blank(string value) => string.IsNullOrWhiteSpace(value);
+
+        private string Required(string settingName, string explicitValue)
+        {
+            string value = Blank(explicitValue) ? this.getConfigValue(settingName, false) : explicitValue;
+            if (Blank(value))
+            {
+                throw new MissingFieldException("Value not found in ConfigurationManager.AppSettings: " + settingName);
+            }
+            return value;
         }
 
         /// <summary>

@@ -117,7 +117,8 @@ namespace Crowdhandler.NETsdk
         protected HttpClient CreateClientObject()
         {
             var factory = HttpMessageHandlerFactory;
-            var client = factory != null ? new HttpClient(factory(), disposeHandler: true) : new HttpClient();
+            // Never follow a redirect: the API does not issue them on the paths we call, and following one would carry the key header elsewhere.
+            var client = factory != null ? new HttpClient(factory(), disposeHandler: true) : new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }, disposeHandler: true);
 
             // The pool is shared by every GateKeeper in the process, each of which may be configured with a different
             // timeout, so the client itself has none: every request carries its own CancellationToken deadline.
@@ -460,7 +461,7 @@ namespace Crowdhandler.NETsdk
                 using (var response = await container.Value.SendAsync(msg, HttpCompletionOption.ResponseContentRead, cancellationToken).ConfigureAwait(false))
                 {
                     int status = (int)response.StatusCode;
-                    if (status >= 400)
+                    if (status >= 300)
                     {
                         throw new CrowdhandlerApiException($"CrowdHandler API returned HTTP {status} for {method} {StripQuery(uri)}", status);
                     }

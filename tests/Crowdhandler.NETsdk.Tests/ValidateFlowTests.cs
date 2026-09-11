@@ -285,6 +285,20 @@ namespace Crowdhandler.NETsdk.Tests
         }
 
         [Fact]
+        public void ApiRedirect_IsNeverFollowed_AndCountsAsTransientFailure()
+        {
+            var gk = Fixture.NewGateKeeper();
+            StubHandler.Respond = (req, body) =>
+            {
+                if (req.RequestUri.AbsolutePath.EndsWith("/v1/rooms")) return StubHandler.Json(200, Fixture.RoomsJson(Fixture.Room()));
+                var r = new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.Found); r.Headers.Location = new Uri("https://evil.test/"); return r;
+            };
+            var ex = Assert.Throws<CrowdhandlerApiException>(() => gk.Validate(new Uri("https://www.example.com/tickets"), UA, "en", "1.2.3.4"));
+            Assert.Equal(302, ex.StatusCode);
+            Assert.All(StubHandler.Requests, r => Assert.NotEqual("evil.test", r.request.RequestUri.Host));
+        }
+
+        [Fact]
         public void ApiThrottled429_IsTransient_ButNotRetried()
         {
             var gk = Fixture.NewGateKeeper();
