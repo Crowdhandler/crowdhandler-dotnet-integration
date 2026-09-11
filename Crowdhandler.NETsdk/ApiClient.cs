@@ -410,6 +410,12 @@ namespace Crowdhandler.NETsdk
                 {
                     throw;
                 }
+                catch (CrowdhandlerApiException ex) when (ex.StatusCode == 429)
+                {
+                    // Throttled: transient (trust-on-fail applies) but never retried immediately, which would add to the load being shed.
+                    last = ex;
+                    break;
+                }
                 catch (CrowdhandlerApiException ex)
                 {
                     last = ex;

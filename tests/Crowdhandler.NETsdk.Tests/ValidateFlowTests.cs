@@ -284,11 +284,20 @@ namespace Crowdhandler.NETsdk.Tests
             Assert.Single(Fixture.RequestsTo("/v1/requests")); // 4xx is not retried
         }
 
+        [Fact]
+        public void ApiThrottled429_IsTransient_ButNotRetried()
+        {
+            var gk = Fixture.NewGateKeeper();
+            Fixture.ScriptApi(Fixture.RoomsJson(Fixture.Room()), "{\"message\":\"Too Many Requests\"}", tokenStatus: 429);
+            var ex = Assert.Throws<CrowdhandlerApiException>(() => gk.Validate(new Uri("https://www.example.com/tickets"), UA, "en", "1.2.3.4"));
+            Assert.True(ex.IsTransient);
+            Assert.Single(Fixture.RequestsTo("/v1/requests"));
+        }
+
         [Theory]
         [InlineData(500)]
         [InlineData(502)]
         [InlineData(503)]
-        [InlineData(429)]
         public void ApiServerError_ThrowsTransient_AfterOneRetry(int status)
         {
             var gk = Fixture.NewGateKeeper();
