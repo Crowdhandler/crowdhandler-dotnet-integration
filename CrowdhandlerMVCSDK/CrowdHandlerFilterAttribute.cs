@@ -271,7 +271,7 @@ namespace Crowdhandler.MVCSDK
 
                 var safetySlug = SafetyNetSlug ?? (gk as GateKeeper)?.SafetyNetSlug ?? ConfigurationManager.AppSettings["CROWDHANDLER_SAFETYNET_SLUG"] ?? "";
                 SetNoCache(response);
-                filterContext.Result = new RedirectResult(GateKeeper.BuildWaitingRoomUrl(gk.WaitingRoomEndpoint, gk.PublicApiKey, safetySlug, url.ToString()));
+                filterContext.Result = new RedirectResult(GateKeeper.BuildWaitingRoomUrl(gk.WaitingRoomEndpoint, gk.PublicApiKey, safetySlug, GateKeeper.RemoveCrowdhandlerParameters(url)));
                 return;
             }
 

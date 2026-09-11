@@ -79,6 +79,16 @@ namespace Crowdhandler.NETsdk.Tests
             Assert.Equal(expected, Util.IsValidToken(token));
         }
 
+        [Theory]
+        [InlineData("https://h.test/p?a=1&ch-id=t&CH-ID-SIGNATURE=s&ch-requested=r&ch-code=c&ch-fresh=true&ch-public-key=k&b=x%3Dy", "https://h.test/p?a=1&b=x%3Dy")]
+        [InlineData("https://h.test:8443/p?ch-id=t", "https://h.test:8443/p")]
+        [InlineData("https://h.test/p", "https://h.test/p")]
+        [InlineData("https://h.test/p?", "https://h.test/p")]
+        public void RemoveCrowdhandlerParameters(string input, string expected)
+        {
+            Assert.Equal(expected, GateKeeper.RemoveCrowdhandlerParameters(new Uri(input)));
+        }
+
         [Fact]
         public void FixedTimeEquals_Semantics()
         {

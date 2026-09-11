@@ -96,7 +96,7 @@ namespace Crowdhandler.MVCSDK.AspNetCore
                 if (!options.EffectiveFailTrust)
                 {
                     string safetySlug = options.SafetyNetSlug ?? (gk as GateKeeper)?.SafetyNetSlug ?? "";
-                    outcome.RedirectUrl = GateKeeper.BuildWaitingRoomUrl(gk.WaitingRoomEndpoint, gk.PublicApiKey, safetySlug, url.ToString());
+                    outcome.RedirectUrl = GateKeeper.BuildWaitingRoomUrl(gk.WaitingRoomEndpoint, gk.PublicApiKey, safetySlug, GateKeeper.RemoveCrowdhandlerParameters(url));
                     SetNoCache(context.Response);
                 }
                 return outcome;

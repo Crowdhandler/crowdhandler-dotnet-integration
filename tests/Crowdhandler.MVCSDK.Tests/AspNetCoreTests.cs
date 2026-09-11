@@ -174,12 +174,12 @@ namespace Crowdhandler.MVCSDK.Tests
         }
 
         [Fact]
-        public async Task TransientFailure_FailTrustFalse_RedirectsToSafetyNet()
+        public async Task TransientFailure_FailTrustFalse_RedirectsToSafetyNet_WithCleanReturnUrl()
         {
             var gk = new ScriptedGateKeeper { OnValidate = (u, ua, l, ip, c) => throw new CrowdhandlerApiException("down", 503) };
-            var ctx = Ctx.Build();
+            var ctx = Ctx.Build(url: "https://www.example.com/tickets?x=1&ch-id=tok0M7SBFAp9J8kK&ch-id-signature=abc&ch-requested=2024-01-01T00%3A00%3A00Z&y=2");
             var outcome = await CrowdhandlerRequestProcessor.HandleAsync(ctx, new CrowdhandlerOptions { FailTrust = false, SafetyNetSlug = "safety" }, gk, null);
-            Assert.Equal("https://wait.test/safety?url=https%3A%2F%2Fwww.example.com%2Ftickets%3Fx%3D1&ch-code=&ch-id=&ch-public-key=pub", outcome.RedirectUrl);
+            Assert.Equal("https://wait.test/safety?url=https%3A%2F%2Fwww.example.com%2Ftickets%3Fx%3D1%26y%3D2&ch-code=&ch-id=&ch-public-key=pub", outcome.RedirectUrl);
         }
 
         [Fact]

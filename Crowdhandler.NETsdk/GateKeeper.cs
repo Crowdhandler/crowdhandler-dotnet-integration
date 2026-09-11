@@ -947,6 +947,32 @@ namespace Crowdhandler.NETsdk
         }
 
         /// <summary>
+        /// The request URL with every CrowdHandler parameter (<c>ch-id</c>, <c>ch-id-signature</c>, <c>ch-requested</c>, <c>ch-code</c>,
+        /// <c>ch-public-key</c>, <c>ch-fresh</c>) removed, other parameters preserved byte-for-byte. Use as the return URL when
+        /// sending a visitor to a waiting room outside of <see cref="Validate"/>.
+        /// </summary>
+        public static string RemoveCrowdhandlerParameters(Uri url)
+        {
+            if (url == null) throw new ArgumentNullException(nameof(url));
+            string authority = url.GetLeftPart(UriPartial.Authority);
+            if (string.IsNullOrEmpty(url.Query) || url.Query == "?")
+            {
+                return authority + url.AbsolutePath;
+            }
+            var remaining = new List<string>();
+            foreach (string segment in url.Query.Substring(1).Split('&'))
+            {
+                int eq = segment.IndexOf('=');
+                string key = (eq < 0 ? segment : segment.Substring(0, eq)).ToLowerInvariant();
+                if (Array.IndexOf(CrowdhandlerQueryParams, key) < 0)
+                {
+                    remaining.Add(segment);
+                }
+            }
+            return authority + url.AbsolutePath + (remaining.Count > 0 ? "?" + string.Join("&", remaining) : "");
+        }
+
+        /// <summary>
         /// The URL that sends a visitor to a waiting room and brings them back to <paramref name="targetUrl"/>.
         /// Hosts implementing trust-on-fail use this with their safety-net slug.
         /// </summary>
