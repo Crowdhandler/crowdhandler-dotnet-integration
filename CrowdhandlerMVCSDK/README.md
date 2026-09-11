@@ -118,8 +118,7 @@ filters.Add(new CrowdhandlerFilterAttribute());
 
 ### Finish the setup (both frameworks)
 
-1. Add the [CrowdHandler JavaScript integration](https://www.crowdhandler.com/docs) to your pages. Check-ins keep sessions alive and report timings server-side (see [Check-ins](#check-ins)); the JavaScript additionally covers visitors who stay on one page without making requests, and adds client-side page timing.
-2. In the CrowdHandler control panel, set the deployment type for your domain to **.NET**.
+In the CrowdHandler control panel, set the deployment type for your domain to **.NET**.
 
 ## How it works
 
@@ -194,7 +193,7 @@ Read more about [Trust on Fail](https://www.crowdhandler.com/docs/80000984411-tr
 
 ## Check-ins
 
-Once a visitor is through, every request is validated from the cookie. Without check-ins, CrowdHandler hears nothing more about them: it cannot count them as active, their session expires on its side after the room timeout, and their page timings are never measured. The JavaScript integration normally covers this. Check-ins cover it server-side and are on by default:
+Once a visitor is through, every request is validated from the cookie. Without check-ins, CrowdHandler hears nothing more about them: it cannot count them as active, their session expires on its side after the room timeout, and their page timings are never measured. Check-ins cover this server-side and are on by default:
 
 ```json
 "Crowdhandler": { "CheckInIntervalMinutes": 2 }
@@ -335,7 +334,7 @@ Override `getIpAddress(ActionExecutingContext)` on the attribute.
 * **Every visitor is sent to the waiting room and the log says the API rejected the request.** The public key is wrong or belongs to a different account. Check **Account > API** in the control panel.
 * **Visitors loop between the site and the waiting room.** The cookie is not being stored. Check that the cookie domain matches the site, that the site is served over HTTPS (or set `CookieSecure = false` for local HTTP), and, on ASP.NET Core, that no cookie-consent middleware strips it (the SDK marks it essential).
 * **Signatures never validate locally and every request calls the API.** The private key does not match the account the public key belongs to.
-* **Visitors are re-queued after a few minutes.** The room's session timeout has passed with no keep-alive. Install the JavaScript integration.
+* **Visitors are re-queued after a few minutes.** The room's session timeout has passed with no contact. Check that check-ins are enabled (`CheckInIntervalMinutes` above 0) and that the interval is shorter than the room timeout. A visitor who stays on one page without making any request cannot be kept alive server-side; raise the domain timeout, or add the optional [CrowdHandler JavaScript integration](https://www.crowdhandler.com/docs), which also keeps idle pages alive.
 * **The waiting room is bypassed on some URLs.** They match the `Exclusions` regex, or no room's URL pattern matches them. Check the room's *URL pattern* in the control panel.
 
 ## Support

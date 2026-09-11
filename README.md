@@ -31,7 +31,7 @@ builder.Services.AddCrowdhandler(builder.Configuration.GetSection("Crowdhandler"
 app.UseCrowdhandler();   // before UseStaticFiles / UseRouting
 ```
 
-Then add the CrowdHandler JavaScript to your pages and set the domain's deployment type to **.NET** in the control panel. The [integration guide](CrowdhandlerMVCSDK/README.md) covers MVC 5, configuration and failure handling.
+Then set the domain's deployment type to **.NET** in the control panel. The [integration guide](CrowdhandlerMVCSDK/README.md) covers MVC 5, configuration and failure handling.
 
 ## Documentation
 
