@@ -240,10 +240,22 @@ builder.Services.AddCrowdhandler(async ctx =>
     {
         return null;                       // not a CrowdHandler tenant: the request passes straight through
     }
-    return tenant.CrowdhandlerOptions;     // a CrowdhandlerOptions instance; cache and reuse it per tenant
+    return tenant.CrowdhandlerOptions;     // built once per tenant and cached, see below
 });
 app.UseCrowdhandler();
 ```
+
+The options are two strings from the tenant's CrowdHandler account; build the instance once when the tenant is loaded and return the same one on every request:
+
+```csharp
+tenant.CrowdhandlerOptions = new CrowdhandlerOptions
+{
+    PublicApiKey = tenant.CrowdhandlerPublicKey,
+    PrivateApiKey = tenant.CrowdhandlerPrivateKey,
+};
+```
+
+Each tenant's hostname must be registered as a domain on that tenant's CrowdHandler account, with at least one room, because rooms are matched by the request host. If a tenant's keys are valid but visitors are never queued, that is the first thing to check; with `Crowdhandler` logging at Debug the decision line reads `allow-no-room`.
 
 Both the middleware and `[CrowdhandlerFilter]` use the resolver. Returned options may be cached per tenant and shared across requests; the SDK never modifies them. Room configuration, failure backoff and check-in suspension are all tracked per public key, so tenants are isolated from each other's rooms and outages. One HTTP connection pool is shared. Log lines carry the first characters of the public key so tenants can be told apart.
 
