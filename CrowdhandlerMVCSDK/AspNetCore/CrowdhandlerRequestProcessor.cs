@@ -93,12 +93,12 @@ namespace Crowdhandler.MVCSDK.AspNetCore
                 bool rejected = ex is CrowdhandlerApiException api && api.IsClientError;
                 if (rejected)
                 {
-                    logger?.LogError(ex, "CrowdHandler API rejected the request for {Url}; visitor sent to the waiting room. Check your API keys.", url);
+                    logger?.LogError(ex, "CrowdHandler API rejected the request for {Path}; visitor sent to the waiting room. Check your API keys.", url.AbsolutePath);
                 }
                 else
                 {
                     // Transient failure talking to CrowdHandler: apply the trust-on-fail policy.
-                    logger?.LogError(ex, "CrowdHandler validation failed for {Url}; FailTrust={FailTrust}", url, options.EffectiveFailTrust);
+                    logger?.LogError(ex, "CrowdHandler validation failed for {Path}; FailTrust={FailTrust}", url.AbsolutePath, options.EffectiveFailTrust);
                 }
 
                 if (rejected || !options.EffectiveFailTrust)
@@ -116,7 +116,7 @@ namespace Crowdhandler.MVCSDK.AspNetCore
             // (session check, room refresh, check-in) count towards it.
             outcome.StartTimestamp = Stopwatch.GetTimestamp();
 
-            logger?.LogDebug("CrowdHandler {Action} {Url} key={Key} slug={Slug} token={Token} api={ApiCalled} bust={Bust}", result.Action, url, KeyPrefix(gk.PublicApiKey), result.slug ?? "-", result.token ?? "-", result.responseID != null, result.bustCookie);
+            logger?.LogDebug("CrowdHandler {Action} {Path} key={Key} slug={Slug} token={Token} api={ApiCalled} bust={Bust}", result.Action, url.AbsolutePath, KeyPrefix(gk.PublicApiKey), result.slug ?? "-", result.token ?? "-", result.responseID != null, result.bustCookie);
 
             if (result.apiError != null)
             {

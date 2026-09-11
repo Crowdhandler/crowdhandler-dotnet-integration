@@ -438,11 +438,11 @@ namespace Crowdhandler.NETsdk
                 }
                 catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
                 {
-                    last = new CrowdhandlerApiException($"CrowdHandler API request timed out after {TimeoutSeconds}s: {method} {uri}", null, ex);
+                    last = new CrowdhandlerApiException($"CrowdHandler API request timed out after {TimeoutSeconds}s: {method} {StripQuery(uri)}", null, ex);
                 }
                 catch (HttpRequestException ex)
                 {
-                    last = new CrowdhandlerApiException($"CrowdHandler API request failed: {method} {uri}: {ex.Message}", null, ex);
+                    last = new CrowdhandlerApiException($"CrowdHandler API request failed: {method} {StripQuery(uri)}: {ex.Message}", null, ex);
                 }
             }
             _lastTransientFailure[RoomsCacheKey] = DateTime.UtcNow;
