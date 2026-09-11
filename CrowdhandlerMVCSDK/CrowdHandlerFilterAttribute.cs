@@ -239,7 +239,6 @@ namespace Crowdhandler.MVCSDK
 
         public override void OnActionExecuting(ActionExecutingContext filterContext)
         {
-            var options = GetAttributeOptions();
             var request = filterContext.HttpContext.Request;
             var response = filterContext.HttpContext.Response;
             Uri url = request.Url;

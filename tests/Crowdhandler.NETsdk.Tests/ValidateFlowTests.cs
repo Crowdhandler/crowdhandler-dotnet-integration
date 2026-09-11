@@ -400,6 +400,22 @@ namespace Crowdhandler.NETsdk.Tests
         }
 
         [Fact]
+        public void RoomsFeedRejected_AfterWarmCache_DoesNotServeStaleRooms()
+        {
+            string key = Fixture.NewPublicKey();
+            var gk = new GateKeeper(key, Fixture.PrivateKey, "https://api.test", "https://wait.test", null, "3", "1", null);
+            string requested = Now();
+            Fixture.ScriptApi(Fixture.RoomsJson(Fixture.Room()), Fixture.TokenJson(true, requested: requested));
+            var first = gk.Validate(new Uri("https://www.example.com/tickets"), UA, "en", "1.2.3.4");
+            Assert.True(first.setCookie);
+            System.Threading.Thread.Sleep(1200); // cache expires
+            StubHandler.Respond = (req, body) => StubHandler.Json(404, "{\"error\":\"Invalid Key.\"}"); // key revoked
+            var r = gk.Validate(new Uri("https://www.example.com/tickets"), UA, "en", "1.2.3.4", first.cookieValue);
+            Assert.Equal("redirect", r.Action); // not validated against the old rooms
+            Assert.NotNull(r.apiError);
+        }
+
+        [Fact]
         public void RoomsFeedOutage_StaleCopyIsCached_NotRefetchedPerRequest()
         {
             var gk = Fixture.NewGateKeeper(roomCacheTTL: "60");

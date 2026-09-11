@@ -170,6 +170,7 @@ namespace Crowdhandler.NETsdk
             // status 6 means the API is throttling this key: an infrastructure condition, not a decision about the visitor.
             if (tokenResponse.status == 6)
             {
+                _lastTransientFailure[RoomsCacheKey] = DateTime.UtcNow;
                 throw new CrowdhandlerApiException("CrowdHandler API is throttling requests (status 6)", 429);
             }
             return tokenResponse;
@@ -240,6 +241,8 @@ namespace Crowdhandler.NETsdk
             }
             catch (Exception ex) when (ex is CrowdhandlerApiException || ex is JsonException)
             {
+                // A definitive rejection (bad or revoked key) must never be papered over with an old copy of the rooms.
+                if (ex is CrowdhandlerApiException rejected && rejected.IsClientError) throw;
                 if (TryGetStale(cacheKey, ex, out var stale)) return StoreRooms(cacheKey, stale, isStale: true);
                 RecordFailure(cacheKey, ex);
                 throw;
@@ -257,6 +260,8 @@ namespace Crowdhandler.NETsdk
             }
             catch (Exception ex) when (ex is CrowdhandlerApiException || ex is JsonException)
             {
+                // A definitive rejection (bad or revoked key) must never be papered over with an old copy of the rooms.
+                if (ex is CrowdhandlerApiException rejected && rejected.IsClientError) throw;
                 if (TryGetStale(cacheKey, ex, out var stale)) return StoreRooms(cacheKey, stale, isStale: true);
                 RecordFailure(cacheKey, ex);
                 throw;

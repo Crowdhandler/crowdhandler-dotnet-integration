@@ -579,7 +579,7 @@ namespace Crowdhandler.NETsdk
             foreach (var candidate in candidates)
             {
                 String expected = Util.SHA256Hash($"{hashedPrivateKey}{room.Slug}{roomActiveDateFormatted}{token}{Util.FormatUtc(candidate.gen)}");
-                if (!candidates.Any(c => Util.FixedTimeEquals(c.sig, expected)))
+                if (!Util.FixedTimeEquals(candidate.sig, expected))
                 {
                     continue;
                 }

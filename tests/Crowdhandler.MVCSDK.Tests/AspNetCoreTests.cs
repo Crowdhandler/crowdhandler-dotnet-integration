@@ -398,6 +398,19 @@ namespace Crowdhandler.MVCSDK.Tests
         }
 
         [Fact]
+        public async Task Skip_RunsBeforeTheTenantResolver()
+        {
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddCrowdhandler((Func<HttpContext, CrowdhandlerOptions>)(ctx => throw new InvalidOperationException("resolver must not run for skipped requests")));
+            var sp = services.BuildServiceProvider();
+            bool nextCalled = false;
+            var mw = new CrowdhandlerMiddleware(ctx => { nextCalled = true; return Task.CompletedTask; }, sp.GetRequiredService<IOptionsMonitor<CrowdhandlerOptions>>(), sp.GetRequiredService<ILoggerFactory>(), new CrowdhandlerMiddlewareOptions { Skip = ctx => ctx.Request.Path.StartsWithSegments("/health") });
+            await mw.InvokeAsync(Ctx.Build(url: "https://www.example.com/health", services: sp));
+            Assert.True(nextCalled);
+        }
+
+        [Fact]
         public async Task MultiTenant_ResolverSelectsKeysPerRequest_AndNullBypasses()
         {
             var gkA = new ScriptedGateKeeper { PublicApiKey = "tenant-a", OnValidate = (u, ua, l, ip, c) => new GateKeeper.ValidateResult { Action = "redirect", redirectUrl = "https://wait.test/a" } };
@@ -626,10 +639,7 @@ namespace Crowdhandler.MVCSDK.Tests
         [Fact]
         public async Task SafetyNetSlug_FallsBackToGatekeeper()
         {
-            var gk = new ScriptedGateKeeper { OnValidate = (u, ua, l, ip, c) => throw new CrowdhandlerApiException("down", 503) };
-            var real = new GateKeeper("pub", "priv", "https://api.test", "https://wait.test", null, "3", "0", "from-gatekeeper");
             var options = new CrowdhandlerOptions { FailTrust = false };
-            // wrap: a GateKeeper subclass that throws transiently
             var throwing = new ThrowingGateKeeper("from-gatekeeper");
             var outcome = await CrowdhandlerRequestProcessor.HandleAsync(Ctx.Build(), options, throwing, null);
             Assert.StartsWith("https://wait.test/from-gatekeeper?", outcome.RedirectUrl);

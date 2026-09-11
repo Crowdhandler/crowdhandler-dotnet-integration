@@ -31,6 +31,11 @@ namespace Crowdhandler.MVCSDK.AspNetCore
         public async Task InvokeAsync(HttpContext context)
         {
             var skip = _middlewareOptions.Skip;
+            if (skip != null && skip(context))
+            {
+                await _next(context).ConfigureAwait(false);
+                return;
+            }
 
             // Multi-tenant hosts resolve settings per request; null means this tenant does not use CrowdHandler.
             CrowdhandlerOptions options;
@@ -60,11 +65,6 @@ namespace Crowdhandler.MVCSDK.AspNetCore
                 return;
             }
 
-            if (skip != null && skip(context))
-            {
-                await _next(context).ConfigureAwait(false);
-                return;
-            }
 
             IGateKeeper gk;
             try

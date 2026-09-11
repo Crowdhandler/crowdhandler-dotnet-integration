@@ -139,6 +139,18 @@ namespace Crowdhandler.NETsdk.Tests
         }
 
         [Fact]
+        public void Throttled_Status6_SuspendsCheckInsToo()
+        {
+            var gk = Gk(2);
+            Fixture.ScriptApi(Fixture.RoomsJson(Fixture.Room(timeout: 60)), "{\"result\":{\"status\":6,\"token\":null,\"slug\":\"\",\"responseID\":null,\"deployment\":null,\"promoted\":0}}");
+            string cookie = CookieWithSignatureAgedMinutes(5);
+            Assert.Equal("allow", gk.Validate(new Uri("https://www.example.com/t"), UA, "en", "1.2.3.4", cookie).Action);
+            int calls = Fixture.RequestsTo("/v1/requests").Count();
+            for (int i = 0; i < 5; i++) Assert.Equal("allow", gk.Validate(new Uri("https://www.example.com/t" + i), UA, "en", "1.2.3.4", cookie).Action);
+            Assert.Equal(calls, Fixture.RequestsTo("/v1/requests").Count());
+        }
+
+        [Fact]
         public void CheckIn_NotPromoted_RedirectsToWaitingRoom()
         {
             var gk = Gk(2);
