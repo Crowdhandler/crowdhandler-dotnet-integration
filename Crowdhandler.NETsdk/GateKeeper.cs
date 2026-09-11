@@ -390,7 +390,7 @@ namespace Crowdhandler.NETsdk
             // skipped: the local signature is still valid.
             bool checkedIn = false;
             long checkInMs = 0;
-            if (sigResponse.success && sigResponse.matched != null && IsCheckInDue(NewestVerifiedSignature(activeCookieToken, token, rooms, room, sigResponse.matched), token))
+            if (sigResponse.success && sigResponse.matched != null && IsCheckInDue(NewestVerifiedSignature(activeCookieToken, token, rooms, room, sigResponse.matched, url.Host), token))
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 TokenResponse api = null;
@@ -928,14 +928,15 @@ namespace Crowdhandler.NETsdk
         /// Only server-issued signatures drive the check-in clock, so a visitor cannot postpone check-ins by appending entries
         /// to their cookie. When the feed is not available (custom room lookup), the signature that just validated is used.
         /// </summary>
-        private CookieSignature NewestVerifiedSignature(CookieToken cookieToken, string token, List<RoomConfig> rooms, RoomConfig currentRoom, CookieSignature matched)
+        private CookieSignature NewestVerifiedSignature(CookieToken cookieToken, string token, List<RoomConfig> rooms, RoomConfig currentRoom, CookieSignature matched, string host)
         {
             var entries = cookieToken?.signatures;
             if (entries == null || entries.Count == 0)
             {
                 return matched;
             }
-            var candidateRooms = rooms ?? new List<RoomConfig> { currentRoom };
+            // Only this domain's rooms can have issued the visitor's signatures, so an account with many domains costs nothing extra.
+            var candidateRooms = rooms != null ? rooms.Where(r => r != null && DomainMatches(r.domain, host)).ToList() : new List<RoomConfig> { currentRoom };
             string hashedPrivateKey = Util.SHA256Hash(this.PrivateApiKey);
             for (int i = entries.Count - 1; i >= 0; i--)
             {
