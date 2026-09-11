@@ -49,12 +49,6 @@ Then add the CrowdHandler JavaScript to your pages and set the domain's deployme
 * **Cookie compatibility.** The `crowdhandler` cookie has the same shape as the JavaScript SDK and edge integrations. `touched` is written in seconds, as 1.0.x did, so mixed 1.0.x / 1.1 server farms can be upgraded one node at a time. Both seconds and milliseconds are read.
 * **Wire contract:** see [Crowdhandler.NETsdk/README.md](Crowdhandler.NETsdk/README.md#wire-contract).
 
-## Not implemented
-
-* **Lite validator / redirect mode** (`/v1/redirect/requests`): the server-side flow does not need it.
-* **Waiting-room hosting mode** (serving the waiting room from your own domain).
-* **Captcha challenges** (`captchaRequired`): handled by the hosted waiting room.
-
 ## Repository layout
 
 ```
