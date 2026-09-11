@@ -183,6 +183,14 @@ namespace Crowdhandler.MVCSDK.Tests
         }
 
         [Fact]
+        public async Task CustomGatekeeperThrowingClientError_IsNeverTrusted()
+        {
+            var gk = new ScriptedGateKeeper { OnValidate = (u, ua, l, ip, c) => throw new CrowdhandlerApiException("Invalid Key.", 404) };
+            var outcome = await CrowdhandlerRequestProcessor.HandleAsync(Ctx.Build(), new CrowdhandlerOptions { FailTrust = true, SafetyNetSlug = "s" }, gk, null);
+            Assert.StartsWith("https://wait.test/s?", outcome.RedirectUrl);
+        }
+
+        [Fact]
         public async Task ConfigurationErrors_AreNeverSwallowed()
         {
             var gk = new ScriptedGateKeeper { OnValidate = (u, ua, l, ip, c) => throw new MissingFieldException("CROWDHANDLER_PUBLIC_KEY") };

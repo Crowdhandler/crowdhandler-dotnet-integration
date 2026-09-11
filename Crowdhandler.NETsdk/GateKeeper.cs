@@ -390,7 +390,7 @@ namespace Crowdhandler.NETsdk
             // skipped: the local signature is still valid.
             bool checkedIn = false;
             long checkInMs = 0;
-            if (sigResponse.success && sigResponse.matched != null && IsCheckInDue(NewestSignature(activeCookieToken), token))
+            if (sigResponse.success && sigResponse.matched != null && IsCheckInDue(NewestVerifiedSignature(activeCookieToken, token, rooms, room, sigResponse.matched), token))
             {
                 var sw = System.Diagnostics.Stopwatch.StartNew();
                 TokenResponse api = null;
@@ -923,9 +923,36 @@ namespace Crowdhandler.NETsdk
             return BuildWaitingRoomUrl(this.WaitingRoomEndpoint, this.PublicApiKey, slug, targetUrl, code, token);
         }
 
-        private static CookieSignature NewestSignature(CookieToken cookieToken)
+        /// <summary>
+        /// The newest cookie signature that was genuinely issued for this token (it verifies against a room in the feed).
+        /// Only server-issued signatures drive the check-in clock, so a visitor cannot postpone check-ins by appending entries
+        /// to their cookie. When the feed is not available (custom room lookup), the signature that just validated is used.
+        /// </summary>
+        private CookieSignature NewestVerifiedSignature(CookieToken cookieToken, string token, List<RoomConfig> rooms, RoomConfig currentRoom, CookieSignature matched)
         {
-            return cookieToken?.signatures?.LastOrDefault(s => s != null && !string.IsNullOrEmpty(s.sig));
+            var entries = cookieToken?.signatures;
+            if (entries == null || entries.Count == 0)
+            {
+                return matched;
+            }
+            var candidateRooms = rooms ?? new List<RoomConfig> { currentRoom };
+            string hashedPrivateKey = Util.SHA256Hash(this.PrivateApiKey);
+            for (int i = entries.Count - 1; i >= 0; i--)
+            {
+                var entry = entries[i];
+                if (entry == null || string.IsNullOrEmpty(entry.sig)) continue;
+                if (ReferenceEquals(entry, matched)) return entry;
+                string gen = Util.FormatUtc(entry.gen);
+                foreach (var r in candidateRooms)
+                {
+                    if (r == null) continue;
+                    if (Util.FixedTimeEquals(entry.sig, Util.SHA256Hash($"{hashedPrivateKey}{r.Slug}{Util.FormatUtc(r.queueActivatesOn)}{token}{gen}")))
+                    {
+                        return entry;
+                    }
+                }
+            }
+            return matched;
         }
 
         /// <summary>Whether the visitor's newest signature is older than the (jittered) check-in interval.</summary>

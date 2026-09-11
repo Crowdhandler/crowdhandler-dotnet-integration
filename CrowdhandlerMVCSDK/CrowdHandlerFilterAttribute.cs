@@ -262,9 +262,10 @@ namespace Crowdhandler.MVCSDK
                     throw;
                 }
 
-                LogError("CrowdHandler validation failed", ex);
+                bool rejected = ex is CrowdhandlerApiException api && api.IsClientError;
+                LogError(rejected ? "CrowdHandler API rejected the request; visitor sent to the waiting room. Check your API keys." : "CrowdHandler validation failed", ex);
 
-                if (this.FailTrust)
+                if (this.FailTrust && !rejected)
                 {
                     return; // trust on fail: carry on with the request
                 }

@@ -139,6 +139,18 @@ namespace Crowdhandler.NETsdk.Tests
         }
 
         [Fact]
+        public void ForgedFreshSignatureInCookie_CannotPostponeCheckIn()
+        {
+            // Visitor has a real, stale signature and appends a fake entry with a fresh gen to look "not due".
+            var gk = Gk(2);
+            string realGen = At(10), fakeGen = At(0);
+            var cookie = Fixture.CookieJson(sigs: new[] { Fixture.Signature(realGen), "0000000000000000000000000000000000000000000000000000000000000000" }, gens: new[] { realGen, fakeGen });
+            var r = gk.Validate(new Uri("https://www.example.com/t"), UA, "en", "1.2.3.4", cookie);
+            Assert.Equal("allow", r.Action);
+            Assert.True(r.checkIn, "the forged entry must not count");
+        }
+
+        [Fact]
         public void Throttled_Status6_SuspendsCheckInsToo()
         {
             var gk = Gk(2);

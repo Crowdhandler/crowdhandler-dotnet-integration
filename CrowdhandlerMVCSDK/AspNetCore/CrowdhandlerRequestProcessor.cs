@@ -90,10 +90,18 @@ namespace Crowdhandler.MVCSDK.AspNetCore
             }
             catch (Exception ex) when (!(ex is InvalidCastException || ex is MissingFieldException || ex is ArgumentException || ex is InvalidOperationException) && !options.EffectiveDebugMode)
             {
-                // Transient failure talking to CrowdHandler: apply the trust-on-fail policy.
-                logger?.LogError(ex, "CrowdHandler validation failed for {Url}; FailTrust={FailTrust}", url, options.EffectiveFailTrust);
+                bool rejected = ex is CrowdhandlerApiException api && api.IsClientError;
+                if (rejected)
+                {
+                    logger?.LogError(ex, "CrowdHandler API rejected the request for {Url}; visitor sent to the waiting room. Check your API keys.", url);
+                }
+                else
+                {
+                    // Transient failure talking to CrowdHandler: apply the trust-on-fail policy.
+                    logger?.LogError(ex, "CrowdHandler validation failed for {Url}; FailTrust={FailTrust}", url, options.EffectiveFailTrust);
+                }
 
-                if (!options.EffectiveFailTrust)
+                if (rejected || !options.EffectiveFailTrust)
                 {
                     string safetySlug = options.SafetyNetSlug ?? (gk as GateKeeper)?.SafetyNetSlug ?? "";
                     outcome.RedirectUrl = GateKeeper.BuildWaitingRoomUrl(gk.WaitingRoomEndpoint, gk.PublicApiKey, safetySlug, GateKeeper.RemoveCrowdhandlerParameters(url));
