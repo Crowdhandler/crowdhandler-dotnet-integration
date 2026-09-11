@@ -2,7 +2,7 @@
 
 The official [CrowdHandler](https://www.crowdhandler.com) virtual waiting room integration for ASP.NET Core and ASP.NET MVC 5.
 
-* **ASP.NET Core 6, 8 and later**: middleware (`app.UseCrowdhandler()`) or action filter (`[CrowdhandlerFilter]`), configured from `appsettings.json`.
+* **ASP.NET Core 6, 8, 9 and 10**: middleware (`app.UseCrowdhandler()`) or action filter (`[CrowdhandlerFilter]`), configured from `appsettings.json`.
 * **ASP.NET MVC 5 (.NET Framework 4.7.2 and later)**: action filter (`[CrowdhandlerFilter]`), configured from `Web.config`.
 
 Both are built on [`Crowdhandler.NETsdk`](https://www.nuget.org/packages/Crowdhandler.NETsdk/), which performs the validation and can be used on its own in any .NET application.
@@ -118,8 +118,7 @@ filters.Add(new CrowdhandlerFilterAttribute());
 
 ### Finish the setup (both frameworks)
 
-1. Add the [CrowdHandler JavaScript integration](https://www.crowdhandler.com/docs) to your pages. Check-ins keep sessions alive and report timings server-side (see [Check-ins](#check-ins)); the JavaScript additionally covers visitors who stay on one page without making requests, and adds client-side page timing.
-2. In the CrowdHandler control panel, set the deployment type for your domain to **.NET**.
+In the CrowdHandler control panel, set the deployment type for your domain to **.NET**.
 
 ## How it works
 
@@ -194,7 +193,7 @@ Read more about [Trust on Fail](https://www.crowdhandler.com/docs/80000984411-tr
 
 ## Check-ins
 
-Once a visitor is through, every request is validated from the cookie. Without check-ins, CrowdHandler hears nothing more about them: it cannot count them as active, their session expires on its side after the room timeout, and their page timings are never measured. The JavaScript integration normally covers this. Check-ins cover it server-side and are on by default:
+Once a visitor is through, every request is validated from the cookie. Without check-ins, CrowdHandler hears nothing more about them: it cannot count them as active, their session expires on its side after the room timeout, and their page timings are never measured. Check-ins cover this server-side and are on by default:
 
 ```json
 "Crowdhandler": { "CheckInIntervalMinutes": 2 }
@@ -241,10 +240,22 @@ builder.Services.AddCrowdhandler(async ctx =>
     {
         return null;                       // not a CrowdHandler tenant: the request passes straight through
     }
-    return tenant.CrowdhandlerOptions;     // a CrowdhandlerOptions instance; cache and reuse it per tenant
+    return tenant.CrowdhandlerOptions;     // built once per tenant and cached, see below
 });
 app.UseCrowdhandler();
 ```
+
+The options are two strings from the tenant's CrowdHandler account; build the instance once when the tenant is loaded and return the same one on every request:
+
+```csharp
+tenant.CrowdhandlerOptions = new CrowdhandlerOptions
+{
+    PublicApiKey = tenant.CrowdhandlerPublicKey,
+    PrivateApiKey = tenant.CrowdhandlerPrivateKey,
+};
+```
+
+Each tenant's hostname must be registered as a domain on that tenant's CrowdHandler account, with at least one room, because rooms are matched by the request host. If a tenant's keys are valid but visitors are never queued, that is the first thing to check; with `Crowdhandler` logging at Debug the decision line reads `allow-no-room`.
 
 Both the middleware and `[CrowdhandlerFilter]` use the resolver. Returned options may be cached per tenant and shared across requests; the SDK never modifies them. Room configuration, failure backoff and check-in suspension are all tracked per public key, so tenants are isolated from each other's rooms and outages. One HTTP connection pool is shared. Log lines carry the first characters of the public key so tenants can be told apart.
 
@@ -335,7 +346,7 @@ Override `getIpAddress(ActionExecutingContext)` on the attribute.
 * **Every visitor is sent to the waiting room and the log says the API rejected the request.** The public key is wrong or belongs to a different account. Check **Account > API** in the control panel.
 * **Visitors loop between the site and the waiting room.** The cookie is not being stored. Check that the cookie domain matches the site, that the site is served over HTTPS (or set `CookieSecure = false` for local HTTP), and, on ASP.NET Core, that no cookie-consent middleware strips it (the SDK marks it essential).
 * **Signatures never validate locally and every request calls the API.** The private key does not match the account the public key belongs to.
-* **Visitors are re-queued after a few minutes.** The room's session timeout has passed with no keep-alive. Install the JavaScript integration.
+* **Visitors are re-queued after a few minutes.** The room's session timeout has passed with no contact. Check that check-ins are enabled (`CheckInIntervalMinutes` above 0) and that the interval is shorter than the room timeout. A visitor who stays on one page without making any request cannot be kept alive server-side; raise the domain timeout, or add the optional [CrowdHandler JavaScript integration](https://www.crowdhandler.com/docs), which also keeps idle pages alive.
 * **The waiting room is bypassed on some URLs.** They match the `Exclusions` regex, or no room's URL pattern matches them. Check the room's *URL pattern* in the control panel.
 
 ## Support

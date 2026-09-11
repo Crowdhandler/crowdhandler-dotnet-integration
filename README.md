@@ -11,6 +11,8 @@ Virtual waiting rooms for .NET applications, by [CrowdHandler](https://www.crowd
 | [`Crowdhandler.MVCSDK`](https://www.nuget.org/packages/Crowdhandler.MVCSDK) | ASP.NET Core (middleware + action filter) and ASP.NET MVC 5 (action filter). **Start here.** | `net8.0`, `net6.0`, `net472` |
 | [`Crowdhandler.NETsdk`](https://www.nuget.org/packages/Crowdhandler.NETsdk) | The validation core, for any other .NET host. | `netstandard2.0`, `net472` |
 
+The `net8.0` build serves .NET 8 and every later version; .NET 9 and 10 applications resolve to it automatically. Tested on .NET 6, 8 and 10, and on .NET Framework 4.7.2.
+
 ## Quick start (ASP.NET Core)
 
 ```
@@ -31,7 +33,7 @@ builder.Services.AddCrowdhandler(builder.Configuration.GetSection("Crowdhandler"
 app.UseCrowdhandler();   // before UseStaticFiles / UseRouting
 ```
 
-Then add the CrowdHandler JavaScript to your pages and set the domain's deployment type to **.NET** in the control panel. The [integration guide](CrowdhandlerMVCSDK/README.md) covers MVC 5, configuration and failure handling.
+Then set the domain's deployment type to **.NET** in the control panel. The [integration guide](CrowdhandlerMVCSDK/README.md) covers MVC 5, configuration and failure handling.
 
 ## Documentation
 
@@ -48,12 +50,6 @@ Then add the CrowdHandler JavaScript to your pages and set the domain's deployme
 * **Fail-closed on bad input, fail-open only on outages.** Tampered cookies or URL parameters never throw; they fall through to the normal queue. Only transport-level failures reach the `FailTrust` policy. API rejections (4xx) always send the visitor to the waiting room and are logged.
 * **Cookie compatibility.** The `crowdhandler` cookie has the same shape as the JavaScript SDK and edge integrations. `touched` is written in seconds, as 1.0.x did, so mixed 1.0.x / 1.1 server farms can be upgraded one node at a time. Both seconds and milliseconds are read.
 * **Wire contract:** see [Crowdhandler.NETsdk/README.md](Crowdhandler.NETsdk/README.md#wire-contract).
-
-## Not implemented
-
-* **Lite validator / redirect mode** (`/v1/redirect/requests`): the server-side flow does not need it.
-* **Waiting-room hosting mode** (serving the waiting room from your own domain).
-* **Captcha challenges** (`captchaRequired`): handled by the hosted waiting room.
 
 ## Repository layout
 
