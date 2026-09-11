@@ -478,7 +478,7 @@ namespace Crowdhandler.NETsdk
             }
 
             var cookieStr = JsonConvert.SerializeObject(newCookie);
-            if (cookieStr.Length > MaxCookieBytes && current.signatures.Count > 1)
+            if (System.Text.Encoding.UTF8.GetByteCount(cookieStr) > MaxCookieBytes && current.signatures.Count > 1)
             {
                 current.signatures = new List<CookieSignature> { current.signatures.Last() };
                 cookieStr = JsonConvert.SerializeObject(newCookie);
@@ -690,10 +690,11 @@ namespace Crowdhandler.NETsdk
                 switch ((room.patternType ?? "").ToLowerInvariant())
                 {
                     case "regex":
-                        matched = !string.IsNullOrEmpty(room.urlPattern) && SafeIsMatch(room.urlPattern, path);
+                        matched = !string.IsNullOrEmpty(room.urlPattern) && TryIsMatch(room.urlPattern, path) == true;
                         break;
                     case "regex-not":
-                        matched = !string.IsNullOrEmpty(room.urlPattern) && !SafeIsMatch(room.urlPattern, path);
+                        // An invalid or timed-out pattern must not negate into "matches everything".
+                        matched = !string.IsNullOrEmpty(room.urlPattern) && TryIsMatch(room.urlPattern, path) == false;
                         break;
                     case "contains":
                         matched = !string.IsNullOrEmpty(room.urlPattern) && path.Contains(room.urlPattern);
@@ -1058,6 +1059,12 @@ namespace Crowdhandler.NETsdk
         /// <summary>Regex match that cannot throw: invalid patterns and timeouts count as "no match".</summary>
         private bool SafeIsMatch(string pattern, string input)
         {
+            return TryIsMatch(pattern, input) == true;
+        }
+
+        /// <summary>Regex match returning null when the pattern is invalid or the match timed out, so callers can tell "did not match" from "could not evaluate".</summary>
+        private bool? TryIsMatch(string pattern, string input)
+        {
             try
             {
                 return GetRegex(pattern).IsMatch(input);
@@ -1065,12 +1072,12 @@ namespace Crowdhandler.NETsdk
             catch (ArgumentException)
             {
                 Log("Ignoring invalid regular expression from room configuration: " + pattern);
-                return false;
+                return null;
             }
             catch (RegexMatchTimeoutException)
             {
-                Log("Regular expression timed out; treating as no match: " + pattern);
-                return false;
+                Log("Regular expression timed out; treating as not evaluable: " + pattern);
+                return null;
             }
         }
 

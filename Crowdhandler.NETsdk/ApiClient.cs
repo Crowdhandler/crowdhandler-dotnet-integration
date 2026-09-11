@@ -165,7 +165,15 @@ namespace Crowdhandler.NETsdk
             }
 
             var result = ParseResult(responseBody);
-            var tokenResponse = result.ToObject<TokenResponse>();
+            TokenResponse tokenResponse;
+            try
+            {
+                tokenResponse = result.ToObject<TokenResponse>();
+            }
+            catch (JsonException ex)
+            {
+                throw new CrowdhandlerApiException("CrowdHandler /v1/requests response could not be read", null, ex);
+            }
 
             // status 6 means the API is throttling this key: an infrastructure condition, not a decision about the visitor.
             if (tokenResponse.status == 6)
@@ -329,7 +337,14 @@ namespace Crowdhandler.NETsdk
             {
                 throw new CrowdhandlerApiException("CrowdHandler /v1/rooms response 'result' is not an array");
             }
-            return result.Children().Select(r => r.ToObject<RoomConfig>()).Where(r => r != null).ToList();
+            try
+            {
+                return result.Children().Select(r => r.ToObject<RoomConfig>()).Where(r => r != null).ToList();
+            }
+            catch (JsonException ex)
+            {
+                throw new CrowdhandlerApiException("CrowdHandler /v1/rooms response could not be read", null, ex);
+            }
         }
 
         // ---------------------------------------------------------------------------------------------------------

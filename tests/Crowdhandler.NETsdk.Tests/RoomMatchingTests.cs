@@ -42,6 +42,7 @@ namespace Crowdhandler.NETsdk.Tests
         [InlineData("unknown-type", "/x", "/x", false)]
         [InlineData("regex", "", "/x", false)]
         [InlineData("regex", "(unclosed", "/x", false)]
+        [InlineData("regex-not", "(unclosed", "/x", false)]
         [InlineData("contains", "", "/x", false)]
         public void MatchRoom_PatternTypes(string patternType, string pattern, string path, bool expected)
         {

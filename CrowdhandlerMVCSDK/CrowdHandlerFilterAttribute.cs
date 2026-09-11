@@ -66,7 +66,7 @@ namespace Crowdhandler.MVCSDK
         private double _checkInIntervalMinutes;
         private bool _checkInIntervalExplicit;
 
-        /// <summary>Minutes between periodic API check-ins for locally validated visitors. 0 disables (default). See <see cref="CrowdhandlerOptions.CheckInIntervalMinutes"/>.</summary>
+        /// <summary>Minutes between periodic API check-ins for locally validated visitors. Default 2 (from the gatekeeper) when not set; 0 disables. See <see cref="CrowdhandlerOptions.CheckInIntervalMinutes"/>.</summary>
         public double CheckInIntervalMinutes { get { return _checkInIntervalMinutes; } set { _checkInIntervalMinutes = value; _checkInIntervalExplicit = true; } }
 
         /// <summary>The options this attribute's own properties express (unset properties are null).</summary>
@@ -354,9 +354,9 @@ namespace Crowdhandler.MVCSDK
             else
             {
                 cookie.Value = Uri.EscapeDataString(JSONString ?? "");
-                // A response carrying a per-visitor session cookie must never be cached by a shared cache.
-                filterContext.HttpContext.Response.Cache.SetCacheability(HttpCacheability.Private);
             }
+            // A response that sets or deletes the per-visitor session cookie must never be cached by a shared cache.
+            filterContext.HttpContext.Response.Cache.SetCacheability(HttpCacheability.Private);
             filterContext.HttpContext.Response.Cookies.Set(cookie);
         }
 
