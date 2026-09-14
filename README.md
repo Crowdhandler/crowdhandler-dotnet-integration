@@ -33,7 +33,7 @@ builder.Services.AddCrowdhandler(builder.Configuration.GetSection("Crowdhandler"
 app.UseCrowdhandler();   // before UseStaticFiles / UseRouting
 ```
 
-Then set the domain's deployment type to **.NET** in the control panel. The [integration guide](CrowdhandlerMVCSDK/README.md) covers MVC 5, configuration and failure handling.
+Then set the domain's deployment type to **.NET** in the CrowdHandler control panel. The [integration guide](CrowdhandlerMVCSDK/README.md) covers MVC 5, configuration and failure handling.
 
 ## Documentation
 
@@ -41,15 +41,7 @@ Then set the domain's deployment type to **.NET** in the control panel. The [int
 * **SDK API reference:** [Crowdhandler.NETsdk/README.md](Crowdhandler.NETsdk/README.md)
 * **Runnable example:** [samples/AspNetCoreSample](samples/AspNetCoreSample)
 * **Testing:** [TESTING.md](TESTING.md)
-* **Changes:** [CHANGELOG.md](CHANGELOG.md)
 * **Quick start on crowdhandler.com:** [.NET Integration - Quick Start Guide](https://www.crowdhandler.com/docs/integrations/net/net-integration-quick-start-guide)
-
-## Design
-
-* **Hybrid validation.** Signatures issued by CrowdHandler are verified locally with the private key. The API is only called when there is no valid signature. Room configuration is cached for 60 s and the last good copy is kept through API outages.
-* **Fail-closed on bad input, fail-open only on outages.** Tampered cookies or URL parameters never throw; they fall through to the normal queue. Only transport-level failures reach the `FailTrust` policy. API rejections (4xx) always send the visitor to the waiting room and are logged.
-* **Cookie compatibility.** The `crowdhandler` cookie has the same shape as the JavaScript SDK and edge integrations. `touched` is written in seconds, as 1.0.x did, so mixed 1.0.x / 1.1 server farms can be upgraded one node at a time. Both seconds and milliseconds are read.
-* **Wire contract:** see [Crowdhandler.NETsdk/README.md](Crowdhandler.NETsdk/README.md#wire-contract).
 
 ## Repository layout
 
@@ -76,7 +68,7 @@ Packages are produced on every Release build in `Crowdhandler.NETsdk/bin/Release
 
 ## Releasing
 
-1. Bump `<Version>` in both `.csproj` files (keep them in step) and add a section to `CHANGELOG.md`.
+1. Bump `<Version>` in both `.csproj` files (keep them in step).
 2. `dotnet build -c Release`, then push the `.nupkg` and `.snupkg` from `*/bin/Release/`:
    `dotnet nuget push "**/bin/Release/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY`
 3. Tag the commit `v<version>`.
