@@ -7,7 +7,7 @@ The official [CrowdHandler](https://www.crowdhandler.com) virtual waiting room i
 
 Both are built on [`Crowdhandler.NETsdk`](https://www.nuget.org/packages/Crowdhandler.NETsdk/), which performs the validation and can be used on its own in any .NET application.
 
-Source, issues and changelog: [github.com/Crowdhandler/crowdhandler-dotnet-integration](https://github.com/Crowdhandler/crowdhandler-dotnet-integration)
+Source and issues: [github.com/Crowdhandler/crowdhandler-dotnet-integration](https://github.com/Crowdhandler/crowdhandler-dotnet-integration)
 
 ## Installation
 
@@ -145,7 +145,7 @@ Every setting can be given three ways. Precedence: attribute property, then `app
 | `FailTrust` | `FailTrust` | none | `true` | What to do when the API is unreachable. See [Failure behaviour](#failure-behaviour). |
 | `SafetyNetSlug` | `SafetyNetSlug` | `CROWDHANDLER_SAFETYNET_SLUG` | none | Waiting room used when `FailTrust` is false and the API is unreachable. |
 | `DebugMode` | `DebugMode` | none | `false` | Rethrow validation errors instead of applying `FailTrust`. Local development only. |
-| `CookieName` | override `getCookieName()` | none | `crowdhandler` | Session cookie name. Only change it if you change it in the control panel too. |
+| `CookieName` | override `getCookieName()` | none | `crowdhandler` | Session cookie name. Only change it if you change it in the CrowdHandler control panel too. |
 | `CookieDomain` | `CookieDomain` | none | host-only | Set to `.example.com` to share the session across subdomains. |
 | `CookieSecure` | none | none | `true` on HTTPS | Force the `Secure` attribute. |
 | `CookieMaxAgeSeconds` | none | none | session | Persist the cookie for this long. |
@@ -199,7 +199,7 @@ Once a visitor is through, every request is validated from the cookie. Without c
 "Crowdhandler": { "CheckInIntervalMinutes": 2 }
 ```
 
-Every N minutes (jittered ±25% per visitor), one of the visitor's page requests also asks the API whether they are still promoted before being served. This adds 100 to 300 ms to one request every N minutes; every other request stays local. The check-in:
+Every N minutes (jittered ±25% per visitor), one of the visitor's page requests also asks the API whether they are still promoted before being served. The check-in:
 
 * keeps the session alive on CrowdHandler's side;
 * reports a timing sample for that page (always, regardless of `PerformanceSampleRate`, with the check-in's own duration subtracted);
@@ -210,7 +210,7 @@ Behaviour to be aware of:
 
 * A check-in that fails (API down, throttled, error) is skipped and the visitor keeps their locally validated session. It is never a trust-on-fail event. After any transient API failure, check-ins are suspended for 10 seconds so an outage does not slow visitors who are already through.
 * The cadence is per visitor, not per room. A visitor holds one token that can be valid in several rooms (with a room-scoped signature for each), and the API refreshes every room's session for the token on any request. One check-in from whichever page they are on keeps all their rooms alive.
-* A visitor idle on a single page makes no requests, so no check-ins. Raise the domain timeout in the control panel for that case.
+* A visitor idle on a single page makes no requests, so no check-ins. Raise the domain timeout in the CrowdHandler control panel for that case.
 * A check-in can legitimately come back "not promoted": the session expired while the visitor was idle, the room was switched into countdown mode, or the room's URL boundary was changed so the page now belongs to a busier room. In each case the visitor is sent to the waiting room. This gives operators a way to reach visitors who are already through, within about N minutes.
 * Load is one API call per active visitor per N minutes on your public key. The edge integrations call the API on every page view, so this is considerably lower. Under throttling (HTTP 429 or status 6) check-ins are skipped and the visitor keeps their session.
 
@@ -343,11 +343,11 @@ Override `getIpAddress(ActionExecutingContext)` on the attribute.
 
 ## Troubleshooting
 
-* **Every visitor is sent to the waiting room and the log says the API rejected the request.** The public key is wrong or belongs to a different account. Check **Account > API** in the control panel.
+* **Every visitor is sent to the waiting room and the log says the API rejected the request.** The public key is wrong or belongs to a different account. Check **Account > API** in the CrowdHandler control panel.
 * **Visitors loop between the site and the waiting room.** The cookie is not being stored. Check that the cookie domain matches the site, that the site is served over HTTPS (or set `CookieSecure = false` for local HTTP), and, on ASP.NET Core, that no cookie-consent middleware strips it (the SDK marks it essential).
 * **Signatures never validate locally and every request calls the API.** The private key does not match the account the public key belongs to.
 * **Visitors are re-queued after a few minutes.** The room's session timeout has passed with no contact. Check that check-ins are enabled (`CheckInIntervalMinutes` above 0) and that the interval is shorter than the room timeout. A visitor who stays on one page without making any request cannot be kept alive server-side; raise the domain timeout, or add the optional [CrowdHandler JavaScript integration](https://www.crowdhandler.com/docs), which also keeps idle pages alive.
-* **The waiting room is bypassed on some URLs.** They match the `Exclusions` regex, or no room's URL pattern matches them. Check the room's *URL pattern* in the control panel.
+* **The waiting room is bypassed on some URLs.** They match the `Exclusions` regex, or no room's URL pattern matches them. Check the room's *URL pattern* in the CrowdHandler control panel.
 
 ## Support
 

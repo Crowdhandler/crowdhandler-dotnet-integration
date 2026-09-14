@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net472;net6.0;net8.0</TargetFrameworks>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Company>Crowdhandler</Company>
     <Authors>Crowdhandler</Authors>
     <Description>Protect your ASP.NET MVC and ASP.NET Core applications with CrowdHandler waiting rooms. Drop-in action filter for MVC 5 and ASP.NET Core, plus middleware and options binding for ASP.NET Core.</Description>
@@ -12,7 +12,6 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageIcon>branding.png</PackageIcon>
-    <PackageReleaseNotes>See CHANGELOG.md in the repository.</PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Crowdhandler/crowdhandler-dotnet-integration</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

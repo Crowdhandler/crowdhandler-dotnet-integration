@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net472</TargetFrameworks>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Authors>Crowdhandler</Authors>
     <Company>Crowdhandler</Company>
     <Product>Crowdhandler</Product>
@@ -13,7 +13,6 @@
     <PackageIcon>branding.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageReleaseNotes>See CHANGELOG.md in the repository.</PackageReleaseNotes>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/Crowdhandler/crowdhandler-dotnet-integration</RepositoryUrl>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
